@@ -1,0 +1,83 @@
+Need to install the following:
+
+pip install pillow pytesseract
+pip install opencv-python pillow pytesseract
+pip install opencv-python pillow pytesseract numpy
+pip install pytesseract opencv-python Pillow numpy
+pip install opencv-python
+
+
+
+accounts:
+
+Purpose: Handle user authentication, registration, profiles, and role-based access control. This app would manage the different user types (Staff Admin, Driver, Super Admin, and User) and ensure that only authorized users can access specific features.
+Why this app?: Your flow involves multiple user roles with distinct permissions, so a dedicated app for accounts is essential. Django's built-in auth system can be extended here.
+Features from your flow:
+Driver registration (e.g., forms for drivers to sign up).
+Staff Admin registration (handled by Super Admin).
+User profiles (e.g., for Drivers to store details like QR codes).
+Role management (e.g., assigning roles like Super Admin creating Staff Admin accounts).
+Key models: User (extended from Django's AbstractUser), Role/Profile.
+Key views: Login, registration, profile updates.
+
+vehicles:
+
+Purpose: Manage driver and vehicle-related operations, including registration, QR code generation, and status updates.
+Why this app?: A lot of your flow revolves around drivers and vehicles (e.g., registration, QR codes, and scanning), so this app can encapsulate all vehicle-centric logic.
+Features from your flow:
+Driver registration (including scanning Driver ID).
+Vehicle registration (generating QR codes).
+Driver-side actions like scanning QR codes to enter/exit the terminal and updating status (e.g., departed).
+Terminal fee balance per vehicle.
+Key models: Driver, Vehicle, QRCode (perhaps as a field or separate model), Payment/Transaction.
+Key views: Driver registration form, QR code generation and scanning interfaces.
+
+terminal:
+
+Purpose: Handle queue management, payments, and real-time operations at the terminal, such as scanning QR codes and updating queues.
+Why this app?: This groups the operational aspects of the terminal, which are shared between Driver and Staff Admin roles but involve dynamic interactions like queues and payments.
+Features from your flow:
+Driver scanning QR code to enter the terminal and pay fees.
+Staff Admin-side features like QR code scanner for queue placement, updating queue/waiting time, and processing payments (e.g., inputting driver payments and updating balances).
+Queued vehicles list and management.
+Terminal fee payments and balance updates.
+Key models: Queue, Transaction (for payments), TerminalFee.
+Key views: QR code scanner interface, Queue management dashboard, Payment processing form.
+
+reports:
+
+Purpose: Manage administrative reporting and oversight, primarily for Super Admin and Staff Admin.
+Why this app?: Your flow includes reporting and administrative tasks that are more analytical and less operational, so separating them keeps things organized.
+Features from your flow:
+Super Admin features like financial reports (e.g., vehicles departing, terminal fees collected).
+Lists of registered drivers and vehicles (which could be shared but viewed differently by roles).
+Creating admin accounts (e.g., Staff Admin creation).
+List of Staff/Admins.
+Key models: Report (for financial data), AdminLog (for tracking actions).
+Key views: Report generation dashboards, Admin account creation forms, Lists of users/vehicles with filters.
+
+Main
+Purpose: Handle the public-facing and general site features, like the home page and informational pages.
+Why this app?: This app would cover the basic, non-role-specific parts of your site, keeping it separate from the more specialized apps.
+Features from your flow:
+User-side pages: Home page, About page (including contact page), Scheduled trips (e.g., displaying vehicles in queue).
+Key models: Perhaps minimal, like a Page or Trip model for scheduled trips.
+Key views: Home view, About view, Trip listing page.
+
+
+Why This Structure?
+Modularity: Each app focuses on a specific aspect of your project, making it easier to develop, test, and maintain. For example, if you need to add more driver features later, you can expand the "vehicles" app without affecting others.
+Django Best Practices: Apps should be reusable and independent. If "accounts" grows too complex, you could even make it a separate package.
+Scalability: As your project evolves (e.g., you mentioned "moreee????"), you can add apps or split existing ones. For instance, if QR code handling becomes very complex, you could extract it into its own app.
+Role-Based Access: Use Django's permission system (e.g., decorators like @login_required and @permission_required) to control access across apps based on user roles.
+
+
+
+| Component                                   | Location                             | Reason                                                                                                                                        |
+| ------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Model (Driver)**                          | `vehicles/models.py`                 | Drivers are tightly linked to vehicles, registrations, and QR codes. Keeping `Driver` here keeps all transport-related entities in one place. |
+| **Form (DriverForm)**                       | `vehicles/forms.py`                  | The registration form will directly connect to the `Driver` model.                                                                            |
+| **View (driver_registration, ocr_process)** | `vehicles/views.py`                  | These views handle driver data and OCR — part of vehicle-side operations.                                                                     |
+| **Template (driver_registration.html)**     | `templates/driver_registration.html` | You already have a shared template folder — keep it there for consistency.                                                                    |
+| **URL routes**                              | `vehicles/urls.py`                   | Add both `/register-driver/` and `/ocr-process/` endpoints here.                                                                              |
+| **OCR image storage (if needed)**           | `MEDIA_ROOT/licenses/`               | Linked to the `license_image` field inside `Driver`.                                                                                          |

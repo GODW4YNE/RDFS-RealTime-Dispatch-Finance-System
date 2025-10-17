@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}TicketNow PH - Home{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <h1 class="display-4 mb-4">🎫 TicketNow PH</h1>
+        <p class="lead mb-5">Fleet Management System for Philippine Operations</p>
+        
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🚗 Driver Management</h5>
+                        <p class="card-text">Register and manage drivers with Philippine license information</p>
+                        <a href="{% url 'driver_registration' %}" class="btn btn-primary">Driver Registration</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🚙 Vehicle Management</h5>
+                        <p class="card-text">Register and manage vehicles with LTO-compliant information</p>
+                        {# <a href="{% url 'vehicle_registration' %}" class="btn btn-primary">Vehicle Registration</a> #}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">👥 Drivers</h5>
+                        <p class="card-text">View and manage all registered drivers</p>
+                        <a href="#" class="btn btn-outline-primary">View Drivers</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">🏎️ Vehicles</h5>
+                        <p class="card-text">View and manage all registered vehicles</p>
+                        <a href="#" class="btn btn-outline-primary">View Vehicles</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5">
+            <a href="{% url 'dashboard' %}" class="btn btn-success btn-lg">Go to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
