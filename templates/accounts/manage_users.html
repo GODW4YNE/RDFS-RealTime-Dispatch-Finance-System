@@ -17,7 +17,16 @@
         <tr>
             <td>{{ user.username }}</td>
             <td>{{ user.email }}</td>
-            <td>{{ user.get_role_display }}</td>
+            <td>{% if user.role == 'admin' %}
+                <span class="badge bg-danger"><i class="bi bi-shield-lock"></i> Admin</span>
+            {% elif user.role == 'staff_admin' %}
+                <span class="badge bg-primary"><i class="bi bi-person-gear"></i> Staff Admin</span>
+            {% elif user.role == 'driver' %}
+                <span class="badge bg-secondary"><i class="bi bi-person"></i> Driver</span>
+            {% else %}
+                <span class="badge bg-dark">Unknown</span>
+            {% endif %}
+            </td>
             <td>
                 <a href="{% url 'edit_user' user.id %}" class="btn btn-warning btn-sm">Edit</a>
                 <a href="{% url 'delete_user' user.id %}" class="btn btn-danger btn-sm">Delete</a>

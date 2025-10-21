@@ -88,5 +88,105 @@
             </a>
         </div>
     </div>
+
+    <!-- 🔹 Registered Drivers -->
+    <hr class="my-5">
+    <h4 class="text-primary"><i class="bi bi-person-badge"></i> Registered Drivers</h4>
+    <div class="table-responsive">
+        <table id="driversTable" class="table table-bordered table-hover align-middle">
+            <thead class="table-primary">
+                <tr>
+                    <th>Driver ID</th>
+                    <th>Full Name</th>
+                    <th>License Number</th>
+                    <th>License Expiry</th>
+                    <th>Mobile Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in drivers %}
+                <tr>
+                    <td>{{ d.driver_id|default_if_none:"N/A" }}</td>
+                    <td>{{ d.first_name|default_if_none:"" }} {{ d.last_name|default_if_none:"" }}</td>
+                    <td>{{ d.license_number|default_if_none:"N/A" }}</td>
+                    <td>{{ d.license_expiry|date:"Y-m-d"|default_if_none:"N/A" }}</td>
+                    <td>{{ d.mobile_number|default_if_none:"N/A" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No drivers registered yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 🔹 Registered Vehicles -->
+    <h4 class="text-success mt-5"><i class="bi bi-truck"></i> Registered Vehicles</h4>
+    <div class="table-responsive">
+        <table id="vehiclesTable" class="table table-bordered table-hover align-middle">
+            <thead class="table-success">
+                <tr>
+                    <th>Vehicle Name</th>
+                    <th>License Plate</th>
+                    <th>Type</th>
+                    <th>Driver</th>
+                    <th>Ownership</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vehicles %}
+                <tr>
+                    <td>{{ v.vehicle_name|default_if_none:"Unnamed Vehicle" }}</td>
+                    <td>{% if d.license_expiry %}{{ d.license_expiry|date:"Y-m-d" }}{% else %}N/A{% endif %}</td>
+                    <td>{{ v.get_vehicle_type_display|default_if_none:"N/A" }}</td>
+                    <td>
+                        {% if v.assigned_driver %}
+                            {{ v.assigned_driver.first_name|default_if_none:"" }} {{ v.assigned_driver.last_name|default_if_none:"" }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>{{ v.get_ownership_type_display|default_if_none:"N/A" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No vehicles registered yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
+<!-- 🔹 Include DataTables JS & CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- 🔹 Initialize DataTables -->
+<script>
+    $(document).ready(function () {
+        $('#driversTable').DataTable({
+            pageLength: 5,
+            lengthMenu: [5, 10, 25, 50],
+            order: [[1, 'asc']],
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search drivers..."
+            }
+        });
+
+        $('#vehiclesTable').DataTable({
+            pageLength: 5,
+            lengthMenu: [5, 10, 25, 50],
+            order: [[1, 'asc']],
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search vehicles..."
+            }
+        });
+    });
+</script>
 {% endblock %}

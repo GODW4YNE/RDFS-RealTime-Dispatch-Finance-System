@@ -128,13 +128,17 @@ class DriverRegistrationForm(forms.Form):
     )
 
 
-# ✅ SIMPLIFIED CUSTOM USER CREATION FORM
+# ✅ ROLE-AWARE CUSTOM USER CREATION FORM
 class CustomUserCreationForm(UserCreationForm):
     ROLE_CHOICES = [
         ('admin', 'Admin'),
         ('staff_admin', 'Staff Admin'),
     ]
-    role = forms.ChoiceField(choices=ROLE_CHOICES, label="Account Role")
+    role = forms.ChoiceField(
+        choices=ROLE_CHOICES,
+        label="Account Role",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
 
     password1 = forms.CharField(
         label="Password",
@@ -149,16 +153,24 @@ class CustomUserCreationForm(UserCreationForm):
         model = CustomUser
         fields = ['username', 'email', 'role', 'password1', 'password2']
 
-    def clean_password2(self):
-        """
-        Simplified password validation — just ensure they match.
-        """
-        password1 = self.cleaned_data.get('password1')
-        password2 = self.cleaned_data.get('password2')
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        role = self.cleaned_data.get('role')
 
-        if password1 and password2 and password1 != password2:
-            raise forms.ValidationError("Passwords do not match.")
-        return password2
+        # Automatically set permissions based on role
+        if role == 'admin':
+            user.is_staff = True
+            user.is_superuser = True
+        elif role == 'staff_admin':
+            user.is_staff = True
+            user.is_superuser = False
+        else:
+            user.is_staff = False
+            user.is_superuser = False
+
+        if commit:
+            user.save()
+        return user
 
 
 # ✅ USER EDIT FORM

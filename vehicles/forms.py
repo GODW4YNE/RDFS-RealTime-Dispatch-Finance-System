@@ -1,8 +1,10 @@
 from django import forms
 from django.core.validators import RegexValidator
-from .models import Driver
+from .models import Driver, Vehicle
 
-class VehicleRegistrationForm(forms.Form):
+
+# ✅ (Keep your original long one but rename it)
+class FullVehicleDetailsForm(forms.Form):
     # Vehicle Basic Information
     plate_number = forms.CharField(
         max_length=10,
@@ -17,7 +19,7 @@ class VehicleRegistrationForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'MV File Number'})
     )
-    
+
     # Vehicle Identification
     cr_number = forms.CharField(
         max_length=20,
@@ -35,7 +37,7 @@ class VehicleRegistrationForm(forms.Form):
         max_length=50,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Chassis Number'})
     )
-    
+
     # Vehicle Details
     make = forms.CharField(
         max_length=50,
@@ -55,7 +57,7 @@ class VehicleRegistrationForm(forms.Form):
         max_value=2030,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '2024'})
     )
-    
+
     # Vehicle Classification
     body_type = forms.ChoiceField(
         choices=[
@@ -72,7 +74,7 @@ class VehicleRegistrationForm(forms.Form):
         ],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    
+
     color = forms.CharField(
         max_length=30,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Color'})
@@ -89,7 +91,7 @@ class VehicleRegistrationForm(forms.Form):
         required=False,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00'})
     )
-    
+
     # Registration Details
     date_of_issuance = forms.DateField(
         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
@@ -97,7 +99,7 @@ class VehicleRegistrationForm(forms.Form):
     date_of_expiry = forms.DateField(
         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
     )
-    
+
     # Fuel Type
     fuel_type = forms.ChoiceField(
         choices=[
@@ -110,7 +112,7 @@ class VehicleRegistrationForm(forms.Form):
         ],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    
+
     # Ownership Details
     owner_name = forms.CharField(
         max_length=200,
@@ -123,7 +125,7 @@ class VehicleRegistrationForm(forms.Form):
             'rows': 3
         })
     )
-    
+
     # Insurance Information
     insurance_company = forms.CharField(
         max_length=100,
@@ -141,12 +143,55 @@ class VehicleRegistrationForm(forms.Form):
     )
 
 
+class VehicleRegistrationForm(forms.ModelForm):
+    class Meta:
+        model = Vehicle
+        fields = [
+            'vehicle_name',
+            'vehicle_type',
+            'ownership_type',
+            'assigned_driver',
+            'cr_number',
+            'or_number',
+            'vin_number',
+            'year_model',
+            'registration_number',
+            'registration_expiry',
+            'license_plate',
+            'manufacturer',
+            'seat_capacity',
+        ]
+        widgets = {
+            'vehicle_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter vehicle name'}),
+            'vehicle_type': forms.Select(attrs={'class': 'form-select'}),
+            'ownership_type': forms.Select(attrs={'class': 'form-select'}),
+            # 👇 searchable driver dropdown (will be enhanced in template)
+            'assigned_driver': forms.Select(attrs={'class': 'form-select searchable-select'}),
+            'cr_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'CR Number'}),
+            'or_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'OR Number'}),
+            'vin_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Vehicle Identification Number (VIN)'}),
+            'year_model': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Year Model'}),
+            'registration_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Registration Number'}),
+            'registration_expiry': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'license_plate': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ABC 123'}),
+            'manufacturer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Manufacturer (e.g., Toyota)'}),
+            'seat_capacity': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Number of seats'}),
+        }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Optional: Add placeholder for driver search
+        self.fields['assigned_driver'].queryset = Driver.objects.all().order_by('first_name')
+        self.fields['assigned_driver'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} ({obj.driver_id})"
+
+
+
+# ✅ Keep your DriverRegistrationForm as is
 class DriverRegistrationForm(forms.ModelForm):
     class Meta:
         model = Driver
         fields = '__all__'
-        exclude = ['driver_id']  # driver_id will auto-generate
+        exclude = ['driver_id']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'middle_name': forms.TextInput(attrs={'class': 'form-control'}),

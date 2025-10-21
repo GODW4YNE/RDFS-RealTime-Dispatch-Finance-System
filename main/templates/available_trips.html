@@ -1,9 +1,0 @@
-{% extends 'base.html' %}
-{% block content %}
-<h1>Available Trips</h1>
-<ul>
-    {% for trip in trips %}
-    <li>Trip at {{ trip.departure_time }} - Vehicle: {{ trip.queue_entry.vehicle.license_plate }}</li>
-    {% endfor %}
-</ul>
-{% endblock %}

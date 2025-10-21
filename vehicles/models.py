@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+
 class Driver(models.Model):
     driver_id = models.CharField(max_length=100, unique=True, default="", blank=True)
     first_name = models.CharField(max_length=100)
@@ -42,6 +43,7 @@ class Driver(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.driver_id})"
 
+
 class Vehicle(models.Model):
     VEHICLE_TYPES = [
         ('jeepney', 'Jeepney'),
@@ -61,44 +63,59 @@ class Vehicle(models.Model):
     vehicle_type = models.CharField(max_length=50, choices=VEHICLE_TYPES)
     ownership_type = models.CharField(max_length=20, choices=OWNERSHIP_TYPES, default='owned')
     assigned_driver = models.ForeignKey('Driver', on_delete=models.CASCADE, related_name='vehicles')
+
+    # 🔹 Registration details
+    cr_number = models.CharField(max_length=50, unique=True, verbose_name="Certificate of Registration")
+    or_number = models.CharField(max_length=50, unique=True, verbose_name="Official Receipt")
+    vin_number = models.CharField(max_length=50, unique=True, verbose_name="Vehicle Identification Number (VIN)")
+    year_model = models.PositiveIntegerField(default=2024)
+
+    # 🔹 Vehicle info
     registration_number = models.CharField(max_length=50, unique=True)
     registration_expiry = models.DateField(blank=True, null=True)
     license_plate = models.CharField(max_length=50, unique=True)
     manufacturer = models.CharField(max_length=100, blank=True, null=True)
     seat_capacity = models.PositiveIntegerField(blank=True, null=True)
     qr_code = models.ImageField(upload_to='qrcodes/', null=True, blank=True)
+
+    # 🔹 Auto timestamps
     date_registered = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
 
-    def save(self, *args, **kwargs):
-        # First save to get an ID
-        super().save(*args, **kwargs)
-
-        # Generate QR code
-        data = (
-            f"Vehicle Type: {self.get_vehicle_type_display()}\n"
-            f"Name        : {self.vehicle_name}\n"
-            f"Plate       : {self.license_plate}\n"
-            f"Driver      : {self.assigned_driver}\n"
-            f"Seats       : {self.seat_capacity}"
-        )
-
-        qr_img = qrcode.make(data)
-        buffer = BytesIO()
-        qr_img.save(buffer, format='PNG')
-        filename = f"qr_{self.license_plate}.png"
-        self.qr_code.save(filename, File(buffer), save=False)
-
-        # Save again with QR code
-        super().save(*args, **kwargs)
-
     def clean(self):
         """Validate license plate format (e.g., ABC 123)."""
-        if not re.match(r'^[A-Z]{3}\s\d{3}$', self.license_plate, re.IGNORECASE):
-            raise ValidationError("License plate must be in format XXX 123 (e.g., ABC 123).")
+        if self.license_plate and not re.match(r'^[A-Z]{3}\s\d{3,4}$', self.license_plate, re.IGNORECASE):
+            raise ValidationError("License plate must be in format XXX 123 or XXX 1234 (e.g., ABC 123).")
+
+    def save(self, *args, **kwargs):
+        """Generate QR code only after creating the vehicle."""
+        creating = self.pk is None
+        super().save(*args, **kwargs)
+
+        # Only generate QR once when new
+        if creating and not self.qr_code:
+            qr_content = (
+                f"VEHICLE ID: {self.id}\n"
+                f"NAME: {self.vehicle_name}\n"
+                f"TYPE: {self.get_vehicle_type_display()}\n"
+                f"PLATE: {self.license_plate}\n"
+                f"DRIVER: {self.assigned_driver}\n"
+                f"CR: {self.cr_number}\n"
+                f"OR: {self.or_number}\n"
+                f"VIN: {self.vin_number}\n"
+                f"YEAR: {self.year_model}"
+            )
+
+            qr_image = qrcode.make(qr_content)
+            buffer = BytesIO()
+            qr_image.save(buffer, format='PNG')
+            filename = f"vehicle_{self.id}_qr.png"
+            self.qr_code.save(filename, File(buffer), save=False)
+            super().save(update_fields=['qr_code'])
 
     def __str__(self):
         return f"{self.vehicle_name} ({self.license_plate})"
+
 
 class Wallet(models.Model):
     STATUS_CHOICES = [
@@ -106,11 +123,7 @@ class Wallet(models.Model):
         ('suspended', 'Suspended'),
     ]
 
-    vehicle = models.OneToOneField(
-        Vehicle, 
-        on_delete=models.CASCADE, 
-        related_name='wallet'
-    )
+    vehicle = models.OneToOneField(Vehicle, on_delete=models.CASCADE, related_name='wallet')
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     currency = models.CharField(max_length=10, default='PHP')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
@@ -119,6 +132,7 @@ class Wallet(models.Model):
 
     def __str__(self):
         return f"{self.vehicle.assigned_driver}'s Wallet - {self.balance} {self.currency}"
+
 
 class Deposit(models.Model):
     STATUS_CHOICES = [
@@ -147,12 +161,10 @@ class Deposit(models.Model):
         """Auto-generate reference number and set status automatically."""
         is_new = self.pk is None
 
-        # ✅ 1. Auto-generate reference number
         if not self.reference_number:
             unique_code = uuid.uuid4().hex[:6].upper()
             self.reference_number = f"DEP-{timezone.now().strftime('%Y%m%d')}-{unique_code}"
 
-        # ✅ 2. Auto-set status based on payment method
         if not self.status:
             if self.payment_method in ['manual', 'bank_transfer']:
                 self.status = 'pending'
@@ -163,7 +175,6 @@ class Deposit(models.Model):
 
         super().save(*args, **kwargs)
 
-        # ✅ 3. Update wallet balance only if deposit is successful (and new)
         if is_new and self.status == 'successful':
             self.wallet.balance += self.amount
             self.wallet.save()
@@ -171,17 +182,10 @@ class Deposit(models.Model):
     def __str__(self):
         return f"Deposit {self.reference_number} - {self.amount} ({self.status})"
 
-# 🔔 SIGNALS - ADD THIS SECTION
+
+# 🔔 SIGNALS
 @receiver(post_save, sender=Vehicle)
 def create_wallet_for_vehicle(sender, instance, created, **kwargs):
     """Auto-create a wallet once a Vehicle is created."""
     if created:
-        Wallet.objects.create(vehicle=instance)
-
-@receiver(post_save, sender=Vehicle)
-def save_wallet_for_vehicle(sender, instance, **kwargs):
-    """Ensure the wallet is saved when Vehicle is updated."""
-    try:
-        instance.wallet.save()
-    except Wallet.DoesNotExist:
         Wallet.objects.create(vehicle=instance)
