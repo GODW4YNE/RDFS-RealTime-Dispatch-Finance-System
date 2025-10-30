@@ -1,8 +1,14 @@
 from django.db import models
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 
 class TerminalFeeBalance(models.Model):
+    """
+    Optional per-vehicle fee balance table.
+    If your project already uses a Wallet model in vehicles app,
+    you can keep this for compatibility or remove it later.
+    """
     vehicle = models.OneToOneField(
         'vehicles.Vehicle',
         on_delete=models.CASCADE,
@@ -15,23 +21,51 @@ class TerminalFeeBalance(models.Model):
             raise ValidationError("Balance cannot be negative.")
 
     def __str__(self):
-        return f"Balance for {self.vehicle}"
+        plate = getattr(self.vehicle, 'plate_number', None) or getattr(self.vehicle, 'license_plate', None)
+        return f"Balance for {plate or self.vehicle.pk}"
 
 
-class TerminalQueue(models.Model):  # ✅ renamed
+class EntryLog(models.Model):
+    """
+    Records each QR validation attempt at the terminal.
+    Useful for audits and troubleshooting.
+    """
+    STATUS_SUCCESS = 'success'
+    STATUS_FAILED = 'failed'
+    STATUS_INSUFFICIENT = 'insufficient'
+    STATUS_INVALID = 'invalid'
+
+    STATUS_CHOICES = [
+        (STATUS_SUCCESS, 'Success'),
+        (STATUS_FAILED, 'Failed'),
+        (STATUS_INSUFFICIENT, 'Insufficient Balance'),
+        (STATUS_INVALID, 'Invalid QR'),
+    ]
+
     vehicle = models.ForeignKey(
         'vehicles.Vehicle',
-        on_delete=models.CASCADE,
-        related_name='queue_entries'
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='entry_logs'
     )
-    entry_time = models.DateTimeField(auto_now_add=True)
-    departure_time = models.DateTimeField(null=True, blank=True)
-    waiting_time = models.DurationField(default='00:30:00')
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='terminal_actions'
+    )
+    fee_charged = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_FAILED)
+    message = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    def can_enter_queue(self):
-        if hasattr(self.vehicle, 'fee_balance') and self.vehicle.fee_balance.balance <= 0:
-            raise ValueError("Insufficient balance.")
-        return True
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Entry Log"
+        verbose_name_plural = "Entry Logs"
 
     def __str__(self):
-        return f"{self.vehicle.license_plate} Queue Entry"
+        plate = getattr(self.vehicle, 'plate_number', None) or getattr(self.vehicle, 'license_plate', None)
+        return f"[{self.created_at:%Y-%m-%d %H:%M}] {plate or 'Unknown vehicle'} - {self.status}"

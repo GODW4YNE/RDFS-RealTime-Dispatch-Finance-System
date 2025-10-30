@@ -1,13 +1,87 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block title %}Terminal Queue | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h2><i class="bi bi-list-check"></i> Terminal Queue</h2>
-    <p class="text-muted">This page will manage the queue of vehicles inside the terminal.</p>
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Terminal Queue</h5>
+            <a href="{% url 'terminal:qr_scan_entry' %}" class="btn btn-light btn-sm">
+                <i class="bi bi-qr-code-scan me-1"></i>QR Scan Entry
+            </a>
+        </div>
 
-    <div class="alert alert-info mt-4">
-        🚧 Queue management system under development.
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                Live list of vehicles that have successfully entered the terminal.
+            </p>
+
+            <!-- 🟩 Table Container -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="queue-table">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>#</th>
+                            <th>Plate Number</th>
+                            <th>Driver Name</th>
+                            <th>Fee Charged</th>
+                            <th>Validated By</th>
+                            <th>Entry Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queue-body">
+                        <tr><td colspan="6" class="text-center text-muted">Loading queue...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 🟨 Empty State -->
+            <div id="no-data" class="alert alert-secondary text-center d-none">
+                <i class="bi bi-info-circle me-1"></i> No vehicles currently in queue.
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- 🟦 Live Refresh Script -->
+<script>
+async function fetchQueueData() {
+    try {
+        const response = await fetch("{% url 'terminal:queue_data' %}");
+        const data = await response.json();
+
+        const tbody = document.getElementById('queue-body');
+        const noData = document.getElementById('no-data');
+        tbody.innerHTML = '';
+
+        if (data.entries && data.entries.length > 0) {
+            noData.classList.add('d-none');
+            data.entries.forEach((item, index) => {
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${item.vehicle_plate}</strong></td>
+                        <td>${item.driver_name}</td>
+                        <td>₱${item.fee.toFixed(2)}</td>
+                        <td>${item.staff}</td>
+                        <td>${item.time}</td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        } else {
+            noData.classList.remove('d-none');
+            tbody.innerHTML = '';
+        }
+    } catch (error) {
+        console.error("Error fetching queue data:", error);
+    }
+}
+
+// 🕒 Auto-refresh every 5 seconds
+fetchQueueData();
+setInterval(fetchQueueData, 5000);
+</script>
 {% endblock %}

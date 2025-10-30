@@ -13,6 +13,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
+from django.db.models import Q
+
+
 
 from .models import Driver, Vehicle, Wallet, Deposit
 from .forms import DriverRegistrationForm, VehicleRegistrationForm
@@ -364,3 +368,35 @@ def ajax_deposit(request):
         return JsonResponse({'success': True, 'message': 'Deposit recorded.', 'new_balance': new_balance})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+
+def registered_vehicles(request):
+    """Display paginated list of all registered vehicles."""
+    vehicle_list = Vehicle.objects.select_related('assigned_driver').order_by('-date_registered')
+    paginator = Paginator(vehicle_list, 10)  # 10 vehicles per page
+    page_number = request.GET.get('page')
+    vehicles = paginator.get_page(page_number)
+
+    return render(request, 'vehicles/registered_vehicles.html', {'vehicles': vehicles})
+
+
+@login_required
+def registered_drivers(request):
+    """Display paginated and searchable list of all registered drivers."""
+    query = request.GET.get('q', '').strip()
+    driver_list = Driver.objects.all().order_by('-id')  # ✅ fixed: use id instead of created_at
+
+    if query:
+        driver_list = driver_list.filter(
+            Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(middle_name__icontains=query)
+            | Q(license_number__icontains=query)
+            | Q(mobile_number__icontains=query)
+        )
+
+    paginator = Paginator(driver_list, 10)  # Show 10 drivers per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'vehicles/registered_drivers.html', {'page_obj': page_obj})

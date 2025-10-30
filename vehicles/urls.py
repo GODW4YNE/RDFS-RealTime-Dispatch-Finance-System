@@ -9,6 +9,10 @@ urlpatterns = [
     path('register-driver/', views.register_driver, name='register_driver'),
     path('register-vehicle/', views.register_vehicle, name='register_vehicle'),
 
+    # ✅ Registered records
+    path('registered/', views.registered_vehicles, name='registered_vehicles'),
+    path('registered-drivers/', views.registered_drivers, name='registered_drivers'),
+
     # ✅ QR / printable page (staff-only)
     path('vehicle/<int:vehicle_id>/qr/', views.vehicle_qr_view, name='vehicle_qr'),
 
