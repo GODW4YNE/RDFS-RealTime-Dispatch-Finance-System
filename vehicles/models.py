@@ -77,6 +77,7 @@ class Vehicle(models.Model):
     manufacturer = models.CharField(max_length=100, blank=True, null=True)
     seat_capacity = models.PositiveIntegerField(blank=True, null=True)
     qr_code = models.ImageField(upload_to='qrcodes/', null=True, blank=True)
+    qr_value = models.CharField(max_length=255, unique=True, blank=True, null=True)
 
     # 🔹 Auto timestamps
     date_registered = models.DateTimeField(auto_now_add=True)
@@ -88,30 +89,25 @@ class Vehicle(models.Model):
             raise ValidationError("License plate must be in format XXX 123 or XXX 1234 (e.g., ABC 123).")
 
     def save(self, *args, **kwargs):
-        """Generate QR code only after creating the vehicle."""
+        """Generate QR code with unique text (for scanning validation)."""
         creating = self.pk is None
         super().save(*args, **kwargs)
 
-        # Only generate QR once when new
-        if creating and not self.qr_code:
-            qr_content = (
-                f"VEHICLE ID: {self.id}\n"
-                f"NAME: {self.vehicle_name}\n"
-                f"TYPE: {self.get_vehicle_type_display()}\n"
-                f"PLATE: {self.license_plate}\n"
-                f"DRIVER: {self.assigned_driver}\n"
-                f"CR: {self.cr_number}\n"
-                f"OR: {self.or_number}\n"
-                f"VIN: {self.vin_number}\n"
-                f"YEAR: {self.year_model}"
-            )
+        if creating or not self.qr_code:
+            # ✅ Generate a short unique text for the QR
+            qr_text = f"VEH-{self.id}-{self.license_plate}".replace(" ", "-").upper()
+            self.qr_value = qr_text
 
-            qr_image = qrcode.make(qr_content)
+            # ✅ Create QR image from qr_value
+            qr_image = qrcode.make(qr_text)
             buffer = BytesIO()
             qr_image.save(buffer, format='PNG')
             filename = f"vehicle_{self.id}_qr.png"
             self.qr_code.save(filename, File(buffer), save=False)
-            super().save(update_fields=['qr_code'])
+
+            # ✅ Save both fields
+            super().save(update_fields=['qr_code', 'qr_value'])
+
 
     def __str__(self):
         return f"{self.vehicle_name} ({self.license_plate})"

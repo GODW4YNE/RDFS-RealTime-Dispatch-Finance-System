@@ -51,6 +51,21 @@
             </a>
         </li>
 
+        <li>
+            <a href="{% url 'terminal:queue_history' %}">
+                <i class="bi bi-clock-history"></i> Queue History
+            </a>
+        </li>
+
+        {% if user.role == 'staff_admin' or user.role == 'admin' %}
+        <li>
+            <a href="{% url 'terminal:system_settings' %}">
+                <i class="bi bi-gear"></i> System Settings
+            </a>
+        </li>
+        {% endif %}
+
+
         <!-- 🚪 Logout -->
         <li>
             <a href="{% url 'accounts:logout' %}">

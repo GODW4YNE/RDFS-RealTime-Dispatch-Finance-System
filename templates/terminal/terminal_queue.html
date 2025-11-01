@@ -4,84 +4,132 @@
 {% block title %}Terminal Queue | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Terminal Queue</h5>
-            <a href="{% url 'terminal:qr_scan_entry' %}" class="btn btn-light btn-sm">
-                <i class="bi bi-qr-code-scan me-1"></i>QR Scan Entry
-            </a>
-        </div>
-
-        <div class="card-body">
-            <p class="text-muted mb-3">
-                Live list of vehicles that have successfully entered the terminal.
-            </p>
-
-            <!-- 🟩 Table Container -->
-            <div class="table-responsive">
-                <table class="table table-hover align-middle" id="queue-table">
-                    <thead class="table-primary">
-                        <tr>
-                            <th>#</th>
-                            <th>Plate Number</th>
-                            <th>Driver Name</th>
-                            <th>Fee Charged</th>
-                            <th>Validated By</th>
-                            <th>Entry Time</th>
-                        </tr>
-                    </thead>
-                    <tbody id="queue-body">
-                        <tr><td colspan="6" class="text-center text-muted">Loading queue...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 🟨 Empty State -->
-            <div id="no-data" class="alert alert-secondary text-center d-none">
-                <i class="bi bi-info-circle me-1"></i> No vehicles currently in queue.
-            </div>
-        </div>
+<div class="container-fluid mt-4">
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Terminal Queue</h5>
+        <small class="text-light opacity-75">Live overview of active vehicles inside the terminal</small>
+      </div>
+      <a href="{% url 'terminal:qr_scan_entry' %}" class="btn btn-light btn-sm">
+        <i class="bi bi-qr-code-scan me-1"></i> QR Scan Entry
+      </a>
     </div>
+
+    <div class="card-body">
+      <!-- 🟩 Live Count -->
+      <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
+        <div>
+          <i class="bi bi-car-front me-2"></i>
+          <strong>Currently Active Vehicles:</strong> <span id="vehicleCount">0</span>
+        </div>
+        <small class="text-muted">Auto-refresh every 5 seconds</small>
+      </div>
+
+      <!-- 🟩 Table Container -->
+      <div class="table-responsive">
+        <table class="table table-striped align-middle" id="queue-table">
+          <thead class="table-primary">
+            <tr>
+              <th>#</th>
+              <th>Plate Number</th>
+              <th>Driver Name</th>
+              <th>Fee Charged</th>
+              <th>Validated By</th>
+              <th>Entry Time</th>
+              <th>Actions</th> <!-- 🆕 Added -->
+            </tr>
+          </thead>
+          <tbody id="queue-body">
+            <tr><td colspan="7" class="text-center text-muted">Loading queue...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 🟨 Empty State -->
+      <div id="no-data" class="alert alert-secondary text-center d-none mt-3">
+        <i class="bi bi-info-circle me-1"></i> No vehicles currently in queue.
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- 🟦 Live Refresh Script -->
+<!-- 🟦 Live Refresh + Depart Button Script -->
 <script>
 async function fetchQueueData() {
-    try {
-        const response = await fetch("{% url 'terminal:queue_data' %}");
-        const data = await response.json();
+  try {
+    const response = await fetch("{% url 'terminal:queue_data' %}");
+    const data = await response.json();
 
-        const tbody = document.getElementById('queue-body');
-        const noData = document.getElementById('no-data');
-        tbody.innerHTML = '';
+    const tbody = document.getElementById('queue-body');
+    const noData = document.getElementById('no-data');
+    const countDisplay = document.getElementById('vehicleCount');
 
-        if (data.entries && data.entries.length > 0) {
-            noData.classList.add('d-none');
-            data.entries.forEach((item, index) => {
-                const row = `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td><strong>${item.vehicle_plate}</strong></td>
-                        <td>${item.driver_name}</td>
-                        <td>₱${item.fee.toFixed(2)}</td>
-                        <td>${item.staff}</td>
-                        <td>${item.time}</td>
-                    </tr>
-                `;
-                tbody.insertAdjacentHTML('beforeend', row);
-            });
-        } else {
-            noData.classList.remove('d-none');
-            tbody.innerHTML = '';
-        }
-    } catch (error) {
-        console.error("Error fetching queue data:", error);
+    tbody.innerHTML = '';
+
+    if (data.entries && data.entries.length > 0) {
+      noData.classList.add('d-none');
+      countDisplay.textContent = data.entries.length;
+
+      data.entries.forEach((item, index) => {
+        const row = `
+          <tr id="row-${item.id}">
+            <td>${index + 1}</td>
+            <td><strong>${item.vehicle_plate}</strong></td>
+            <td>${item.driver_name}</td>
+            <td>₱${item.fee.toFixed(2)}</td>
+            <td>${item.staff}</td>
+            <td>${item.time}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger" onclick="markDeparted(${item.id})">
+                <i class="bi bi-box-arrow-right"></i> Departed
+              </button>
+            </td>
+          </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      noData.classList.remove('d-none');
+      countDisplay.textContent = '0';
     }
+  } catch (error) {
+    console.error("Error fetching queue data:", error);
+  }
+}
+
+// 🟥 AJAX call to mark vehicle as departed
+async function markDeparted(entryId) {
+  if (!confirm("Mark this vehicle as departed?")) return;
+
+  try {
+    const response = await fetch(`/terminal/mark-departed/${entryId}/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+      }
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      // remove row instantly
+      const row = document.getElementById(`row-${entryId}`);
+      if (row) row.remove();
+      alert(data.message);
+      fetchQueueData(); // refresh list
+    } else {
+      alert(data.message || "Failed to mark as departed.");
+    }
+  } catch (err) {
+    alert("Network error while marking as departed.");
+  }
 }
 
 // 🕒 Auto-refresh every 5 seconds
 fetchQueueData();
 setInterval(fetchQueueData, 5000);
 </script>
+
+<!-- CSRF Token (for AJAX) -->
+<form style="display:none;">{% csrf_token %}</form>
 {% endblock %}

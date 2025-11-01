@@ -27,8 +27,8 @@ class TerminalFeeBalance(models.Model):
 
 class EntryLog(models.Model):
     """
-    Records each QR validation attempt at the terminal.
-    Useful for audits and troubleshooting.
+    Records each QR validation attempt at the terminal and tracks
+    whether the vehicle is still inside or has departed.
     """
     STATUS_SUCCESS = 'success'
     STATUS_FAILED = 'failed'
@@ -61,6 +61,10 @@ class EntryLog(models.Model):
     message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # 🟩 New fields for Step 3.2
+    is_active = models.BooleanField(default=True, help_text="Indicates if vehicle is still in terminal queue.")
+    departed_at = models.DateTimeField(null=True, blank=True, help_text="Time the vehicle exited the terminal.")
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = "Entry Log"
@@ -68,4 +72,26 @@ class EntryLog(models.Model):
 
     def __str__(self):
         plate = getattr(self.vehicle, 'plate_number', None) or getattr(self.vehicle, 'license_plate', None)
-        return f"[{self.created_at:%Y-%m-%d %H:%M}] {plate or 'Unknown vehicle'} - {self.status}"
+        state = "Active" if self.is_active else "Exited"
+        return f"[{self.created_at:%Y-%m-%d %H:%M}] {plate or 'Unknown vehicle'} - {self.status} ({state})"
+
+
+class SystemSettings(models.Model):
+    terminal_fee = models.DecimalField(max_digits=10, decimal_places=2, default=50.00)
+    min_deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
+    entry_cooldown_minutes = models.PositiveIntegerField(default=5)
+    theme_preference = models.CharField(
+        max_length=10,
+        choices=[('light', 'Light Mode'), ('dark', 'Dark Mode')],
+        default='light'
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)  # 🕒 Track last change
+
+    def __str__(self):
+        return f"System Settings (Fee: ₱{self.terminal_fee}, Min Deposit: ₱{self.min_deposit_amount})"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(id=1)
+        return obj

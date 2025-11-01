@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Queue History | TicketNow{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i> Queue History</h5>
+        <small class="text-light opacity-75">Filter and export past entries</small>
+      </div>
+      <a href="{% url 'terminal:terminal_queue' %}" class="btn btn-light btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Back to Queue
+      </a>
+    </div>
+
+    <div class="card-body">
+      <!-- 🟩 Filter Form -->
+      <form method="GET" class="row g-3 mb-4 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Status</label>
+          <select name="status" class="form-select">
+            <option value="">All</option>
+            <option value="success" {% if status_filter == 'success' %}selected{% endif %}>Success</option>
+            <option value="insufficient" {% if status_filter == 'insufficient' %}selected{% endif %}>Insufficient</option>
+            <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+            <option value="invalid" {% if status_filter == 'invalid' %}selected{% endif %}>Invalid</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Start Date</label>
+          <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-bold">End Date</label>
+          <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+        </div>
+        <div class="col-md-3 text-end">
+          <button type="submit" class="btn btn-primary mt-3">
+            <i class="bi bi-funnel"></i> Apply Filters
+          </button>
+          <a href="{% url 'terminal:queue_history' %}" class="btn btn-outline-secondary mt-3">
+            <i class="bi bi-x-circle"></i> Reset
+          </a>
+        </div>
+      </form>
+
+      <!-- 🟦 Export Button -->
+      <div class="text-end mb-3">
+        <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}
+                 {% if start_date %}start_date={{ start_date }}&{% endif %}
+                 {% if end_date %}end_date={{ end_date }}&{% endif %}
+                 export=csv"
+           class="btn btn-success">
+          <i class="bi bi-file-earmark-excel"></i> Export CSV
+        </a>
+      </div>
+
+      <!-- 🟧 Table -->
+      <div class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>#</th>
+              <th>Plate Number</th>
+              <th>Driver</th>
+              <th>Status</th>
+              <th>Fee</th>
+              <th>Staff</th>
+              <th>Entry Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ log.vehicle.license_plate|default:"N/A" }}</td>
+              <td>
+                {% if log.vehicle.assigned_driver %}
+                  {{ log.vehicle.assigned_driver.first_name }} {{ log.vehicle.assigned_driver.last_name }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+              <td>
+                {% if log.status == "success" %}
+                  <span class="badge bg-success">Success</span>
+                {% elif log.status == "insufficient" %}
+                  <span class="badge bg-warning text-dark">Insufficient</span>
+                {% elif log.status == "invalid" %}
+                  <span class="badge bg-secondary">Invalid</span>
+                {% else %}
+                  <span class="badge bg-danger">Failed</span>
+                {% endif %}
+              </td>
+              <td>₱{{ log.fee_charged }}</td>
+              <td>{{ log.staff.username|default:"N/A" }}</td>
+              <td>{{ log.created_at|date:"M d, Y H:i" }}</td>
+            </tr>
+            {% empty %}
+              <tr><td colspan="7" class="text-center text-muted">No records found for selected filters.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

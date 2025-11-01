@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import TerminalFeeBalance, EntryLog
+from .models import TerminalFeeBalance, EntryLog, SystemSettings
+
+admin.site.register(SystemSettings)
+
 
 @admin.register(TerminalFeeBalance)
 class TerminalFeeBalanceAdmin(admin.ModelAdmin):

@@ -4,6 +4,14 @@
 {% block title %}QR Scan Entry{% endblock %}
 
 {% block content %}
+<div class="alert alert-info text-start small">
+  <strong>Current Fee:</strong> ₱{{ terminal_fee }} |
+  <strong>Minimum Deposit:</strong> ₱{{ min_deposit }} |
+  <strong>Cooldown:</strong> {{ cooldown }} minute(s)
+</div>
+
+
+
 <div class="container mt-4">
   <div class="card shadow-sm border-0">
     <div class="card-header bg-primary text-white">

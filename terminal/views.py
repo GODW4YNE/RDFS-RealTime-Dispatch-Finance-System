@@ -1,10 +1,14 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.cache import never_cache
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from vehicles.models import Vehicle, Wallet, Driver, Deposit  # 🟩 Added models
-from .models import EntryLog
+from .models import EntryLog, SystemSettings
 from decimal import Decimal
+from django import forms
+from django.contrib import messages
+from django.utils import timezone
+import csv
 
 
 # 🔐 Helper: Check if user is staff
@@ -12,7 +16,7 @@ def is_staff_admin(user):
     return user.is_authenticated and (user.is_staff or getattr(user, 'role', '') == 'staff_admin')
 
 
-# ✅ Deposit Menu View (Fixed)
+# ✅ Deposit Menu View (Improved + Safe Handling)
 @login_required(login_url='login')
 @user_passes_test(is_staff_admin)
 @never_cache
@@ -21,19 +25,36 @@ def deposit_menu(request):
     Allows staff to select a driver (only those with registered vehicles),
     view wallet balance, and record deposits.
     """
-    # 🟩 Only drivers who have at least one registered vehicle (corrected)
-    drivers_with_vehicles = Driver.objects.filter(vehicles__isnull=False).distinct().order_by('last_name', 'first_name')
 
-    # 🟩 Get recent deposits (limit 10)
+    settings = SystemSettings.get_solo()
+    min_deposit = settings.min_deposit_amount
+
+
+
+    # 🟩 Only drivers who have at least one registered vehicle
+    drivers_with_vehicles = (
+        Driver.objects
+        .filter(vehicles__isnull=False)
+        .distinct()
+        .order_by('last_name', 'first_name')
+    )
+
+    # 🟩 Fetch the 10 most recent deposits
     recent_deposits = (
         Deposit.objects
         .select_related('wallet__vehicle__assigned_driver')
         .order_by('-created_at')[:10]
     )
 
+    # 🧠 Optional: Context info for debugging if no drivers found
+    context_message = "" if drivers_with_vehicles.exists() else \
+        "No registered drivers with vehicles found. Please register a vehicle first."
+
     context = {
         "drivers": drivers_with_vehicles,
         "recent_deposits": recent_deposits,
+        "context_message": context_message,
+        "min_deposit": min_deposit,
     }
 
     return render(request, "terminal/deposit_menu.html", context)
@@ -55,11 +76,11 @@ def terminal_queue(request):
 def queue_data(request):
     """
     Returns the latest EntryLog records as JSON for live queue refresh.
-    Used by terminal_queue.html to auto-update every few seconds.
+    Only includes active (non-departed) entries.
     """
     logs = (
         EntryLog.objects
-        .filter(status=EntryLog.STATUS_SUCCESS)
+        .filter(status=EntryLog.STATUS_SUCCESS, is_active=True)
         .select_related("vehicle", "staff")
         .order_by("-created_at")[:20]
     )
@@ -68,8 +89,9 @@ def queue_data(request):
     for log in logs:
         vehicle = log.vehicle
         data.append({
+            "id": log.id,
             "vehicle_plate": getattr(vehicle, "plate_number", "N/A") if vehicle else "—",
-            "driver_name": getattr(vehicle.driver, "name", "N/A") if vehicle and hasattr(vehicle, "driver") else "—",
+            "driver_name": getattr(vehicle, "assigned_driver", "N/A") if vehicle else "—",
             "fee": float(log.fee_charged),
             "staff": log.staff.username if log.staff else "—",
             "time": log.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -84,52 +106,63 @@ def queue_data(request):
 @never_cache
 def qr_scan_entry(request):
     """
-    Handles QR scans from the camera and provides clear feedback.
-    Deducts entry fee if balance is sufficient.
-    Prevents double entry if vehicle is already in queue.
+    Handles QR scans for vehicle entry validation.
+    Deducts terminal fee if balance is sufficient and cooldown has passed.
+    Prevents re-entry within the configured cooldown.
     """
+    # 🧩 Load dynamic settings (defaults if missing)
+    settings = SystemSettings.get_solo()
+    entry_fee = settings.terminal_fee
+    cooldown_minutes = settings.entry_cooldown_minutes
+    min_deposit = settings.min_deposit_amount
+
     if request.method == "POST":
         qr_code = request.POST.get("qr_code", "").strip()
         if not qr_code:
             return JsonResponse({"status": "error", "message": "QR code is empty. Please try again."})
 
-        entry_fee = Decimal("10.00")
         staff_user = request.user
 
         try:
-            # 🔍 Look for matching vehicle QR
-            vehicle = Vehicle.objects.filter(qr_code=qr_code).first()
+            vehicle = Vehicle.objects.filter(qr_value__iexact=qr_code.strip()).first()
+            print("Scanned QR:", qr_code)
             if not vehicle:
                 return JsonResponse({
                     "status": "error",
                     "message": "No vehicle found for this QR code. Please make sure it's valid."
                 })
 
-            # 🚫 Prevent duplicate queue entry
-            from .models import EntryLog
-            recent_entry = EntryLog.objects.filter(
-                vehicle=vehicle,
-                status=EntryLog.STATUS_SUCCESS
-            ).order_by('-created_at').first()
-
-            if recent_entry:
-                # If the last log is recent (within 5 minutes), prevent re-entry
-                from datetime import timedelta, timezone, datetime
-                now = datetime.now(timezone.utc)
-                if (now - recent_entry.created_at) < timedelta(minutes=5):
-                    return JsonResponse({
-                        "status": "error",
-                        "message": f"Driver for vehicle '{vehicle.plate_number}' is already in queue."
-                    })
+            # ⏱ Prevent re-entry within cooldown
+            from datetime import timedelta, timezone, datetime
+            now = datetime.now(timezone.utc)
+            recent_entry = (
+                EntryLog.objects.filter(vehicle=vehicle, status=EntryLog.STATUS_SUCCESS)
+                .order_by("-created_at")
+                .first()
+            )
+            if recent_entry and (now - recent_entry.created_at) < timedelta(minutes=cooldown_minutes):
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"⏳ Vehicle '{vehicle.license_plate}' entered recently. "
+                               f"Please wait {cooldown_minutes} minute(s) before re-entry."
+                })
 
             wallet = Wallet.objects.filter(vehicle=vehicle).first()
             if not wallet:
                 return JsonResponse({
                     "status": "error",
-                    "message": "No wallet found for this vehicle. Please register deposit first."
+                    "message": "No wallet found for this vehicle. Please deposit funds first."
                 })
 
-            # ✅ Sufficient balance
+            # 💰 Check minimum deposit requirement
+            if wallet.balance < min_deposit:
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"⚠️ Minimum deposit of ₱{min_deposit} required before entry. "
+                               "Please add funds at the deposit counter."
+                })
+
+            # ✅ Check if sufficient for entry fee
             if wallet.balance >= entry_fee:
                 wallet.balance -= entry_fee
                 wallet.save()
@@ -139,33 +172,157 @@ def qr_scan_entry(request):
                     staff=staff_user,
                     fee_charged=entry_fee,
                     status=EntryLog.STATUS_SUCCESS,
-                    message=f"Vehicle '{vehicle.plate_number}' validated. ₱{entry_fee} deducted."
+                    message=f"Vehicle '{vehicle.license_plate}' validated. ₱{entry_fee} deducted."
                 )
 
                 return JsonResponse({
                     "status": "success",
-                    "message": f"✅ Vehicle '{vehicle.plate_number}' validated successfully! ₱{entry_fee} deducted."
+                    "message": f"✅ Vehicle '{vehicle.license_plate}' validated successfully! ₱{entry_fee} deducted."
                 })
-
             else:
                 EntryLog.objects.create(
                     vehicle=vehicle,
                     staff=staff_user,
                     fee_charged=entry_fee,
                     status=EntryLog.STATUS_INSUFFICIENT,
-                    message=f"Insufficient balance for vehicle '{vehicle.plate_number}'."
+                    message=f"Insufficient balance for vehicle '{vehicle.license_plate}'."
                 )
                 return JsonResponse({
                     "status": "error",
-                    "message": f"❌ Insufficient balance for vehicle '{vehicle.plate_number}'. Please deposit funds."
+                    "message": f"❌ Insufficient balance for vehicle '{vehicle.license_plate}'. "
+                               f"Deposit at least ₱{entry_fee}."
                 })
 
         except Exception as e:
-            # ✅ Catch all unexpected issues safely
-            return JsonResponse({
-                "status": "error",
-                "message": f"Unexpected error: {str(e)}"
-            })
+            return JsonResponse({"status": "error", "message": f"Unexpected error: {str(e)}"})
 
-    # GET request → just load the scan page
-    return render(request, "terminal/qr_scan_entry.html")
+    # 🟦 Display current settings at top of page
+    context = {
+        "terminal_fee": entry_fee,
+        "min_deposit": min_deposit,
+        "cooldown": cooldown_minutes,
+    }
+    return render(request, "terminal/qr_scan_entry.html", context)
+
+
+
+@login_required(login_url='login')
+@user_passes_test(is_staff_admin)
+@never_cache
+def system_settings(request):
+    """Allows admin/staff_admin to view and update terminal-wide configurations."""
+    settings = SystemSettings.get_solo()
+
+    class SettingsForm(forms.ModelForm):
+        class Meta:
+            model = SystemSettings
+            fields = ['terminal_fee', 'min_deposit_amount', 'entry_cooldown_minutes', 'theme_preference']
+            widgets = {
+                'terminal_fee': forms.NumberInput(attrs={
+                    'class': 'form-control',
+                    'min': '0', 'step': '0.01',
+                    'placeholder': 'Enter terminal entry fee (₱)',
+                }),
+                'min_deposit_amount': forms.NumberInput(attrs={
+                    'class': 'form-control',
+                    'min': '0', 'step': '0.01',
+                    'placeholder': 'Enter minimum deposit required (₱)',
+                }),
+                'entry_cooldown_minutes': forms.NumberInput(attrs={
+                    'class': 'form-control',
+                    'min': '1', 'step': '1',
+                    'placeholder': 'Entry cooldown (minutes)',
+                }),
+                'theme_preference': forms.Select(attrs={'class': 'form-select'}),
+            }
+
+    form = SettingsForm(request.POST or None, instance=settings)
+
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ System settings updated successfully!")
+            return redirect('terminal:system_settings')
+        else:
+            messages.error(request, "❌ Please correct the errors below.")
+
+    return render(request, "terminal/system_settings.html", {"form": form})
+
+
+
+# 🟩 STEP 3.3.1: AJAX endpoint to mark a vehicle as departed
+@login_required(login_url='login')
+@user_passes_test(is_staff_admin)
+@never_cache
+def mark_departed(request, entry_id):
+    """
+    Marks a vehicle entry as departed (is_active=False, sets departed_at timestamp).
+    Used by AJAX button on Terminal Queue page.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Invalid request method."})
+
+    try:
+        log = get_object_or_404(EntryLog, id=entry_id, is_active=True)
+        log.is_active = False
+        log.departed_at = timezone.now()
+        log.save(update_fields=["is_active", "departed_at"])
+        return JsonResponse({
+            "success": True,
+            "message": f"✅ Vehicle '{log.vehicle.license_plate}' marked as departed."
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "message": f"Error: {str(e)}"})
+
+
+
+# 🟩 STEP 3.4.1: Queue History View
+@login_required(login_url='login')
+@user_passes_test(is_staff_admin)
+@never_cache
+def queue_history(request):
+    """
+    Displays all vehicle entry logs (active and departed)
+    with filters for status, date range, and export option.
+    """
+    logs = EntryLog.objects.select_related('vehicle', 'staff').order_by('-created_at')
+
+    # 🟢 Filters
+    status_filter = request.GET.get('status', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    if status_filter:
+        logs = logs.filter(status=status_filter)
+
+    if start_date:
+        logs = logs.filter(created_at__date__gte=start_date)
+
+    if end_date:
+        logs = logs.filter(created_at__date__lte=end_date)
+
+    # 🟣 CSV Export
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="queue_history.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Plate', 'Driver', 'Status', 'Fee', 'Staff', 'Entry Time'])
+
+        for log in logs:
+            writer.writerow([
+                getattr(log.vehicle, 'license_plate', 'N/A'),
+                f"{log.vehicle.assigned_driver.first_name} {log.vehicle.assigned_driver.last_name}" if log.vehicle and log.vehicle.assigned_driver else "N/A",
+                log.status.title(),
+                f"₱{log.fee_charged}",
+                log.staff.username if log.staff else "N/A",
+                timezone.localtime(log.created_at).strftime("%Y-%m-%d %H:%M"),
+            ])
+        return response
+
+    context = {
+        "logs": logs[:200],  # display limit
+        "status_filter": status_filter,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    return render(request, "terminal/queue_history.html", context)
