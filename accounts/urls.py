@@ -1,18 +1,13 @@
 from django.urls import path
-from django.contrib.auth.views import LogoutView
 from . import views
-from vehicles import views as vehicle_views  # ✅ import staff dashboard from vehicles app
+
+app_name = "accounts"
 
 urlpatterns = [
-    # ✅ Authentication
-    path('', views.login_view, name='login'),
-    path('logout/', views.logout_view, name='logout'),
-
-    # ✅ Dashboards
-    path('dashboard/admin/', views.admin_dashboard_view, name='admin_dashboard'),
-    path('dashboard/staff/', vehicle_views.staff_dashboard, name='staff_dashboard'),
-
-    # 📴 Disabled old driver registration routes (now handled by vehicles app)
-    # path('driver/register/', views.driver_registration, name='driver_registration'),
-    # path('driver/register/success/', views.driver_registration_success, name='driver_registration_success'),
+    path("login/", views.login_view, name="login"),
+    path("logout/", views.logout_view, name="logout"),
+    path("dashboard/admin/", views.admin_dashboard_view, name="admin_dashboard"),
+    path("manage-users/", views.manage_users, name="manage_users"),
+    path("create-user/", views.create_user, name="create_user"),  # 🆕 added
+    path("dashboard/staff/", views.staff_dashboard_view, name="staff_dashboard"),
 ]

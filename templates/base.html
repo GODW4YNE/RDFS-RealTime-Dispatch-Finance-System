@@ -17,14 +17,14 @@
             font-family: 'Segoe UI', sans-serif;
         }
 
-        /* Sidebar (shared style only) */
+        /* 🟦 Sidebar styling (kept global so dashboards can reuse it) */
         .sidebar {
             background-color: #0d6efd;
             color: white;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
             padding-top: 20px;
         }
 
@@ -47,13 +47,14 @@
             background-color: #0b5ed7;
         }
 
-        /* General content styling */
+        /* 🟩 Dashboard content area */
         .content {
             padding: 30px;
             min-height: 100vh;
+            background-color: #f8f9fa;
         }
 
-        /* Responsive fix */
+        /* Responsive layout fix */
         @media (max-width: 768px) {
             .sidebar {
                 min-height: auto;
@@ -65,18 +66,14 @@
     </style>
 </head>
 <body>
-
-    <!-- ✅ Dynamic Page Content (Dashboards handle sidebars internally) -->
+    <!-- ✅ Main dynamic content only -->
     <div class="content">
         {% block content %}
         {% endblock %}
     </div>
 
-    <!-- jQuery (for Select2, AJAX, etc.) -->
+    <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <!-- Bootstrap JS -->
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
-
 </body>
 </html>

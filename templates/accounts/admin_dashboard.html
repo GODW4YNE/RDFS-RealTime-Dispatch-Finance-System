@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <!-- ✅ Sidebar (Auto-loads correct version based on user.role) -->
+        <!-- ✅ Sidebar -->
         <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
             {% include 'includes/sidebar.html' %}
         </div>
@@ -61,7 +61,8 @@
             <!-- 🔹 Quick Links -->
             <div class="row mt-5">
                 <div class="col-md-4">
-                    <a href="{% url 'manage_users' %}" class="text-decoration-none">
+                    <!-- ✅ FIXED: namespace added -->
+                    <a href="{% url 'accounts:manage_users' %}" class="text-decoration-none">
                         <div class="card border-0 shadow-sm h-100 hover-shadow">
                             <div class="card-body text-center">
                                 <i class="bi bi-people fs-1 text-primary"></i>
@@ -85,7 +86,8 @@
                 </div>
 
                 <div class="col-md-4">
-                    <a href="{% url 'profit_report' %}" class="text-decoration-none">
+                    <!-- ✅ FIXED: namespace added for reports -->
+                    <a href="{% url 'reports:profit_report' %}" class="text-decoration-none">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body text-center">
                                 <i class="bi bi-graph-up-arrow fs-1 text-success"></i>

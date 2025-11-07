@@ -10,14 +10,13 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Q
 
-
-
+from accounts.utils import is_staff_admin_or_admin, is_admin
 from .models import Driver, Vehicle, Wallet, Deposit
 from .forms import DriverRegistrationForm, VehicleRegistrationForm
 
@@ -52,9 +51,7 @@ def ocr_process(request):
 
         # OCR text extraction
         raw_text = pytesseract.image_to_string(thresh)
-        # Debug printing available in shell if needed
         print("🧾 OCR RAW TEXT:", raw_text)
-
         text = re.sub(r'[^A-Za-z0-9\s:/-]', ' ', raw_text).upper()
 
         # Extract data patterns (best-effort; adjust regex as needed)
@@ -82,15 +79,15 @@ def ocr_process(request):
 
 
 # -------------------------
-# STAFF DASHBOARD (combined driver + vehicle)
+# STAFF DASHBOARD
 # -------------------------
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 def staff_dashboard(request):
-    """Main staff dashboard showing driver + vehicle registration quick links (kept lightweight)."""
+    """Main staff dashboard showing driver + vehicle registration quick links."""
     driver_form = DriverRegistrationForm(request.POST or None, request.FILES or None)
     vehicle_form = VehicleRegistrationForm(request.POST or None)
 
-    # Handle submissions (non-AJAX fallback) - keep minimal, but prefer dedicated pages.
     if request.method == 'POST':
         if 'driver_submit' in request.POST:
             if driver_form.is_valid():
@@ -98,7 +95,7 @@ def staff_dashboard(request):
                 messages.success(request, "✅ Driver registered successfully!")
                 return redirect('staff_dashboard')
             else:
-                messages.error(request, "❌ Driver form contains errors. See details below.")
+                messages.error(request, "❌ Driver form contains errors.")
 
         elif 'vehicle_submit' in request.POST:
             if vehicle_form.is_valid():
@@ -120,31 +117,26 @@ def staff_dashboard(request):
                     return redirect('staff_dashboard')
                 except ValidationError as ve:
                     vehicle_form.add_error(None, ve)
-                    messages.error(request, "❌ Vehicle data invalid. See form errors.")
+                    messages.error(request, "❌ Invalid vehicle data.")
                 except Exception as e:
-                    messages.error(request, f"❌ Unexpected error saving vehicle: {e}")
+                    messages.error(request, f"❌ Unexpected error: {e}")
             else:
-                messages.error(request, "❌ Vehicle form contains errors. See details below.")
-        else:
-            messages.error(request, "❌ Unknown submission. Try again.")
-
-    # Dashboard stats
-    total_drivers = Driver.objects.count()
-    total_vehicles = Vehicle.objects.count()
+                messages.error(request, "❌ Vehicle form contains errors.")
 
     context = {
         'driver_form': driver_form,
         'vehicle_form': vehicle_form,
-        'total_drivers': total_drivers,
-        'total_vehicles': total_vehicles,
+        'total_drivers': Driver.objects.count(),
+        'total_vehicles': Vehicle.objects.count(),
     }
     return render(request, 'accounts/staff_dashboard.html', context)
 
 
 # -------------------------
-# STANDALONE VEHICLE REGISTRATION (dedicated page)
+# VEHICLE REGISTRATION (page)
 # -------------------------
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 def vehicle_registration(request):
     form = VehicleRegistrationForm(request.POST or None)
     if request.method == 'POST':
@@ -167,36 +159,35 @@ def vehicle_registration(request):
                 return redirect('vehicles:register_vehicle')
             except ValidationError as ve:
                 form.add_error(None, ve)
-                messages.error(request, "❌ Vehicle data invalid. See form errors.")
+                messages.error(request, "❌ Invalid vehicle data.")
             except Exception as e:
-                messages.error(request, f"❌ Unexpected error saving vehicle: {e}")
+                messages.error(request, f"❌ Unexpected error: {e}")
         else:
-            messages.error(request, "❌ Please correct the errors in the form.")
+            messages.error(request, "❌ Please correct the errors.")
 
     vehicles = Vehicle.objects.select_related('assigned_driver').all().order_by('-date_registered')
     return render(request, 'vehicles/register_vehicle.html', {'form': form, 'vehicles': vehicles})
 
 
 # -------------------------
-# AJAX endpoints for registration (Driver & Vehicle)
+# AJAX ENDPOINTS
 # -------------------------
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 @csrf_exempt
 def ajax_register_driver(request):
     if request.method == 'POST':
         form = DriverRegistrationForm(request.POST, request.FILES)
         if form.is_valid():
             driver = form.save()
-            return JsonResponse({
-                'success': True,
-                'message': f"✅ Driver '{driver.first_name} {driver.last_name}' registered successfully!"
-            })
+            return JsonResponse({'success': True, 'message': f"✅ Driver '{driver.first_name} {driver.last_name}' registered successfully!"})
         else:
             return JsonResponse({'success': False, 'errors': form.errors})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
 
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 @csrf_exempt
 def ajax_register_vehicle(request):
     if request.method == 'POST':
@@ -216,23 +207,21 @@ def ajax_register_vehicle(request):
 
                 vehicle.full_clean()
                 vehicle.save()
-                return JsonResponse({
-                    'success': True,
-                    'message': f"✅ Vehicle '{vehicle.vehicle_name}' registered successfully!"
-                })
+                return JsonResponse({'success': True, 'message': f"✅ Vehicle '{vehicle.vehicle_name}' registered successfully!"})
             except ValidationError as ve:
                 return JsonResponse({'success': False, 'errors': ve.message_dict})
             except Exception as e:
                 return JsonResponse({'success': False, 'errors': str(e)})
         else:
             return JsonResponse({'success': False, 'errors': form.errors})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
 
 # -------------------------
-# DEDICATED STAFF PAGES (register driver/vehicle)
+# DEDICATED STAFF PAGES
 # -------------------------
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 def register_driver(request):
     form = DriverRegistrationForm(request.POST or None, request.FILES or None)
     if request.method == 'POST':
@@ -241,19 +230,15 @@ def register_driver(request):
             messages.success(request, "✅ Driver registered successfully!")
             return redirect('vehicles:register_driver')
         else:
-            messages.error(request, "❌ Driver form contains errors. See details below.")
-
+            messages.error(request, "❌ Driver form contains errors.")
     total_drivers = Driver.objects.count()
-    return render(request, 'vehicles/register_driver.html', {
-        'form': form,
-        'total_drivers': total_drivers,
-    })
+    return render(request, 'vehicles/register_driver.html', {'form': form, 'total_drivers': total_drivers})
 
 
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 def register_vehicle(request):
     form = VehicleRegistrationForm(request.POST or None)
-
     if request.method == 'POST':
         if form.is_valid():
             try:
@@ -267,64 +252,45 @@ def register_vehicle(request):
                     vehicle.vin_number = cd.get('vin_number') or vehicle.vin_number
                 if 'year_model' in cd:
                     vehicle.year_model = cd.get('year_model') or vehicle.year_model
-
                 vehicle.full_clean()
                 vehicle.save()
                 messages.success(request, f"✅ Vehicle '{vehicle.vehicle_name}' registered successfully!")
                 return redirect('vehicles:register_vehicle')
             except ValidationError as ve:
                 form.add_error(None, ve)
-                messages.error(request, "❌ Vehicle data invalid. See form errors.")
+                messages.error(request, "❌ Vehicle data invalid.")
             except Exception as e:
-                messages.error(request, f"❌ Unexpected error saving vehicle: {e}")
+                messages.error(request, f"❌ Unexpected error: {e}")
         else:
-            messages.error(request, "❌ Please correct the errors in the form.")
-
+            messages.error(request, "❌ Please correct the errors.")
     vehicles = Vehicle.objects.select_related('assigned_driver').all().order_by('-date_registered')
     total_vehicles = Vehicle.objects.count()
-
-    return render(request, 'vehicles/register_vehicle.html', {
-        'form': form,
-        'vehicles': vehicles,
-        'total_vehicles': total_vehicles,
-    })
+    return render(request, 'vehicles/register_vehicle.html', {'form': form, 'vehicles': vehicles, 'total_vehicles': total_vehicles})
 
 
 # -------------------------
-# Wallet / Deposit / QR helpers & endpoints
+# WALLET & DEPOSITS
 # -------------------------
 @login_required
 def get_wallet_balance(request, driver_id):
-    """
-    Return the wallet balance for a given driver (JSON).
-    NOTE: This selects the first vehicle for that driver; change logic if your flow chooses vehicle instead.
-    """
     try:
         driver = get_object_or_404(Driver, pk=driver_id)
         vehicle = driver.vehicles.first()
         if not vehicle:
             return JsonResponse({'success': False, 'message': 'Driver has no vehicle.'})
-        wallet = getattr(vehicle, 'wallet', None)
-        if not wallet:
-            # Wallet should be auto-created by post_save signal, but handle gracefully
-            wallet = Wallet.objects.create(vehicle=vehicle)
+        wallet = getattr(vehicle, 'wallet', None) or Wallet.objects.create(vehicle=vehicle)
         return JsonResponse({'success': True, 'balance': float(wallet.balance)})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
 
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 def vehicle_qr_view(request, vehicle_id):
-    """
-    Staff-only page to view/print a vehicle's QR code.
-    Access: staff users only (is_staff or role == 'staff_admin').
-    """
-    # enforce staff-only access (admin can view list but not print)
     user_role = getattr(request.user, 'role', '')
-    if not (request.user.is_staff or user_role == 'staff_admin'):
+    if not (request.user.is_staff or user_role in ['staff_admin', 'admin']):
         messages.error(request, "You do not have permission to view this page.")
         return redirect('vehicles:register_vehicle')
-
     vehicle = get_object_or_404(Vehicle, pk=vehicle_id)
     return render(request, 'vehicles/qr_detail.html', {'vehicle': vehicle})
 
@@ -332,17 +298,11 @@ def vehicle_qr_view(request, vehicle_id):
 @login_required
 @csrf_exempt
 def ajax_deposit(request):
-    """
-    AJAX endpoint to create a Deposit record and update wallet if appropriate.
-    Expects POST: driver (id) OR vehicle (id) depending on frontend; here it expects 'driver'
-    """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
     driver_id = request.POST.get('driver') or request.POST.get('driver_id')
     amount = request.POST.get('amount')
     payment_method = request.POST.get('payment_method', 'manual')
-
     if not driver_id or not amount:
         return JsonResponse({'success': False, 'message': 'Missing driver or amount.'})
     try:
@@ -350,66 +310,48 @@ def ajax_deposit(request):
         vehicle = driver.vehicles.first()
         if not vehicle:
             return JsonResponse({'success': False, 'message': 'Driver has no vehicle.'})
-
-        wallet = getattr(vehicle, 'wallet', None)
-        if not wallet:
-            wallet = Wallet.objects.create(vehicle=vehicle)
-
+        wallet = getattr(vehicle, 'wallet', None) or Wallet.objects.create(vehicle=vehicle)
         amt = Decimal(amount)
         if amt <= 0:
             return JsonResponse({'success': False, 'message': 'Amount must be greater than zero.'})
-
-        # create deposit (Deposit.save handles reference_number and wallet credit when status == 'successful')
         deposit = Deposit.objects.create(wallet=wallet, amount=amt, payment_method=payment_method)
-
-        # After save, wallet may have been updated by Deposit.save (if status == 'successful')
-        new_balance = float(wallet.balance)
-
-        return JsonResponse({'success': True, 'message': 'Deposit recorded.', 'new_balance': new_balance})
+        return JsonResponse({'success': True, 'message': 'Deposit recorded.', 'new_balance': float(wallet.balance)})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
 
+# -------------------------
+# REGISTERED VEHICLES / DRIVERS
+# -------------------------
+@login_required
+@user_passes_test(is_staff_admin_or_admin)
 def registered_vehicles(request):
-    """Display paginated list of all registered vehicles."""
     vehicle_list = Vehicle.objects.select_related('assigned_driver').order_by('-date_registered')
-    paginator = Paginator(vehicle_list, 10)  # 10 vehicles per page
-    page_number = request.GET.get('page')
-    vehicles = paginator.get_page(page_number)
-
+    paginator = Paginator(vehicle_list, 10)
+    vehicles = paginator.get_page(request.GET.get('page'))
     return render(request, 'vehicles/registered_vehicles.html', {'vehicles': vehicles})
 
 
 @login_required
+@user_passes_test(is_staff_admin_or_admin)
 def registered_drivers(request):
-    """Display paginated and searchable list of all registered drivers."""
     query = request.GET.get('q', '').strip()
-    driver_list = Driver.objects.all().order_by('-id')  # ✅ fixed: use id instead of created_at
-
+    driver_list = Driver.objects.all().order_by('-id')
     if query:
         driver_list = driver_list.filter(
-            Q(first_name__icontains=query)
-            | Q(last_name__icontains=query)
-            | Q(middle_name__icontains=query)
-            | Q(license_number__icontains=query)
-            | Q(mobile_number__icontains=query)
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(middle_name__icontains=query) |
+            Q(license_number__icontains=query) |
+            Q(mobile_number__icontains=query)
         )
-
-    paginator = Paginator(driver_list, 10)  # Show 10 drivers per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
+    paginator = Paginator(driver_list, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'vehicles/registered_drivers.html', {'page_obj': page_obj})
-
 
 
 @login_required
 def get_vehicles_by_driver(request, driver_id):
     vehicles = Vehicle.objects.filter(assigned_driver_id=driver_id)
-    data = {
-        "vehicles": [
-            {"id": v.id, "license_plate": v.license_plate, "vehicle_name": v.vehicle_name}
-            for v in vehicles
-        ]
-    }
+    data = {"vehicles": [{"id": v.id, "license_plate": v.license_plate, "vehicle_name": v.vehicle_name} for v in vehicles]}
     return JsonResponse(data)
