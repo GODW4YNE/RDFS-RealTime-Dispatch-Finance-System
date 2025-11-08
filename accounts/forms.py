@@ -4,9 +4,8 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from .models import CustomUser
 
 
-# ✅ DRIVER REGISTRATION FORM (keep as is)
+# ✅ DRIVER REGISTRATION FORM (unchanged)
 class DriverRegistrationForm(forms.Form):
-    # Personal Information
     first_name = forms.CharField(
         max_length=100,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First Name'})
@@ -44,7 +43,7 @@ class DriverRegistrationForm(forms.Form):
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'email@example.com'})
     )
 
-    # Address (Philippine format)
+    # Address
     house_number = forms.CharField(
         max_length=50,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'House/Bldg No.'})
@@ -71,7 +70,7 @@ class DriverRegistrationForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ZIP Code', 'pattern': '[0-9]{4}'})
     )
 
-    # Driver's License Information
+    # License Information
     license_number = forms.CharField(
         max_length=15,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'N01-23-456789'})
@@ -89,7 +88,7 @@ class DriverRegistrationForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    # Additional Information
+    # Additional Info
     birth_date = forms.DateField(
         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
     )
@@ -128,7 +127,7 @@ class DriverRegistrationForm(forms.Form):
     )
 
 
-# ✅ ROLE-AWARE CUSTOM USER CREATION FORM
+# ✅ UPDATED ROLE-AWARE CUSTOM USER CREATION FORM (Admin + Staff)
 class CustomUserCreationForm(UserCreationForm):
     ROLE_CHOICES = [
         ('admin', 'Admin'),
@@ -153,11 +152,18 @@ class CustomUserCreationForm(UserCreationForm):
         model = CustomUser
         fields = ['username', 'email', 'role', 'password1', 'password2']
 
+    def __init__(self, *args, **kwargs):
+        """Hide the Admin role if a staff_admin is creating a user."""
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user and getattr(user, 'role', '') == 'staff_admin':
+            self.fields['role'].choices = [('staff_admin', 'Staff Admin')]
+
     def save(self, commit=True):
         user = super().save(commit=False)
         role = self.cleaned_data.get('role')
 
-        # Automatically set permissions based on role
+        # ✅ Automatically assign correct privileges
         if role == 'admin':
             user.is_staff = True
             user.is_superuser = True

@@ -13,7 +13,7 @@
         <!-- Main Content -->
         <div class="col-md-9 col-lg-10 p-4">
             <h3 class="mb-3"><i class="bi bi-list-ul"></i> Registered Vehicles</h3>
-            <p class="text-muted">View all registered vehicles and access their QR codes for printing.</p>
+            <p class="text-muted">View, search, and manage registered vehicles in the system.</p>
 
             <!-- Messages -->
             {% if messages %}
@@ -49,6 +49,7 @@
                                     <th>Year</th>
                                     <th>Expiry</th>
                                     <th>QR Code</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -78,6 +79,19 @@
                                             </a>
                                         {% else %}
                                             <span class="text-muted">No QR</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.is_superuser or user.role == 'admin' %}
+                                            <a href="#" 
+                                                class="btn btn-danger btn-sm btn-delete-item" 
+                                                data-url="{% url 'vehicles:delete_vehicle' vehicle.id %}" 
+                                                data-type="Vehicle">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </a>
+
+                                        {% else %}
+                                            <span class="text-muted">No Action</span>
                                         {% endif %}
                                     </td>
                                 </tr>

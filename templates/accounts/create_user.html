@@ -8,7 +8,11 @@
     <!-- Page Header -->
     <div class="text-center mb-4">
         <h2 class="fw-bold text-primary">Create New Account</h2>
-        <p class="text-muted">Only Admins and Staff Admins can access this page.</p>
+        {% if user.role == 'admin' %}
+            <p class="text-muted">As an <strong>Admin</strong>, you can create both Admin and Staff Admin accounts.</p>
+        {% else %}
+            <p class="text-muted">As a <strong>Staff Admin</strong>, you can only create Staff Admin accounts.</p>
+        {% endif %}
     </div>
 
     <!-- Alert Messages -->
@@ -34,7 +38,7 @@
                     <label for="id_username" class="form-label fw-semibold">Username</label>
                     {{ form.username }}
                     {% if form.username.errors %}
-                    <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                        <div class="text-danger small">{{ form.username.errors.0 }}</div>
                     {% endif %}
                 </div>
 
@@ -43,7 +47,7 @@
                     <label for="id_email" class="form-label fw-semibold">Email Address</label>
                     {{ form.email }}
                     {% if form.email.errors %}
-                    <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                        <div class="text-danger small">{{ form.email.errors.0 }}</div>
                     {% endif %}
                 </div>
 
@@ -51,8 +55,17 @@
                 <div class="mb-3">
                     <label for="id_role" class="form-label fw-semibold">Account Role</label>
                     {{ form.role }}
+                    {% if user.role == 'admin' %}
+                        <small class="text-muted d-block mt-1">
+                            • Choose <strong>Admin</strong> for full access or <strong>Staff Admin</strong> for limited dashboard access.
+                        </small>
+                    {% else %}
+                        <small class="text-muted d-block mt-1">
+                            • Only Staff Admin accounts can be created under your role.
+                        </small>
+                    {% endif %}
                     {% if form.role.errors %}
-                    <div class="text-danger small">{{ form.role.errors.0 }}</div>
+                        <div class="text-danger small">{{ form.role.errors.0 }}</div>
                     {% endif %}
                 </div>
 
@@ -61,7 +74,7 @@
                     <label for="id_password1" class="form-label fw-semibold">Password</label>
                     {{ form.password1 }}
                     {% if form.password1.errors %}
-                    <div class="text-danger small">{{ form.password1.errors.0 }}</div>
+                        <div class="text-danger small">{{ form.password1.errors.0 }}</div>
                     {% endif %}
                 </div>
 
@@ -70,7 +83,7 @@
                     <label for="id_password2" class="form-label fw-semibold">Confirm Password</label>
                     {{ form.password2 }}
                     {% if form.password2.errors %}
-                    <div class="text-danger small">{{ form.password2.errors.0 }}</div>
+                        <div class="text-danger small">{{ form.password2.errors.0 }}</div>
                     {% endif %}
                 </div>
 
@@ -83,7 +96,7 @@
 
                 <!-- Back Link -->
                 <div class="text-center mt-3">
-                    <a href="{% url 'manage_users' %}" class="text-decoration-none">
+                    <a href="{% url 'accounts:manage_users' %}" class="text-decoration-none">
                         <i class="bi bi-arrow-left"></i> Back to User Management
                     </a>
                 </div>

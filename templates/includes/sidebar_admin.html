@@ -17,9 +17,7 @@
     </li>
 
     <!-- 🚗 Vehicle & Driver Management -->
-    <li><a href="{% url 'vehicles:register_driver' %}"><i class="bi bi-person-plus"></i> Register Driver</a></li>
     <li><a href="{% url 'vehicles:registered_drivers' %}"><i class="bi bi-people"></i> Registered Drivers</a></li>
-    <li><a href="{% url 'vehicles:register_vehicle' %}"><i class="bi bi-truck"></i> Register Vehicle</a></li>
     <li><a href="{% url 'vehicles:registered_vehicles' %}"><i class="bi bi-list-ul"></i> Registered Vehicles</a></li>
 
     <!-- 💰 Deposits & Queue -->
@@ -29,6 +27,7 @@
     <!-- 📜 Reports & History -->
     <li><a href="{% url 'terminal:queue_history' %}"><i class="bi bi-clock-history"></i> Queue History</a></li>
     <li><a href="{% url 'reports:profit_report' %}"><i class="bi bi-graph-up"></i> Profit Report</a></li>
+
 
     <!-- ⚙️ Settings -->
     <li><a href="{% url 'terminal:system_settings' %}"><i class="bi bi-gear"></i> System Settings</a></li>

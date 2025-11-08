@@ -1,13 +1,15 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.cache import never_cache
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import logout
+from .models import CustomUser
+from .forms import CustomUserCreationForm, CustomUserEditForm
 from vehicles.models import Driver, Vehicle
 from terminal.models import EntryLog
 
 
-# ✅ Role checkers
+# ✅ ROLE HELPERS
 def is_admin(user):
     return user.is_authenticated and (user.is_superuser or getattr(user, 'role', '') == 'admin')
 
@@ -17,12 +19,9 @@ def is_staff_admin(user):
 
 
 # ✅ LOGIN VIEW
-@never_cache
 def login_view(request):
-    # Always flush session when visiting login page (security)
-    request.session.flush()
+    from django.contrib.auth import authenticate, login
 
-    # If user is already logged in, redirect based on role
     if request.user.is_authenticated:
         if is_admin(request.user):
             return redirect('accounts:admin_dashboard')
@@ -34,7 +33,7 @@ def login_view(request):
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
 
-        if user is not None:
+        if user:
             login(request, user)
             request.session['role'] = getattr(user, 'role', '')
 
@@ -58,59 +57,143 @@ def logout_view(request):
     return redirect('login')
 
 
+# ✅ MANAGE USERS
+@login_required(login_url='login')
+@user_passes_test(lambda u: is_admin(u) or is_staff_admin(u))
+@never_cache
+def manage_users(request):
+    """Allow Admins and Staff Admins to view user list."""
+    if is_admin(request.user):
+        users = CustomUser.objects.exclude(username=request.user.username).order_by('username')
+    else:
+        # Staff Admins can only see other staff admins
+        users = CustomUser.objects.filter(role='staff_admin').exclude(username=request.user.username)
+    return render(request, 'accounts/manage_users.html', {'users': users})
+
+
+# ✅ CREATE USER
+@login_required(login_url='login')
+@user_passes_test(lambda u: is_admin(u) or is_staff_admin(u))
+@never_cache
+def create_user(request):
+    """
+    Admins can create Admin and Staff Admin accounts.
+    Staff Admins can only create Staff Admin accounts.
+    """
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST, user=request.user)
+        if form.is_valid():
+            new_user = form.save()
+            messages.success(
+                request,
+                f"✅ New {new_user.role.replace('_', ' ').title()} account '{new_user.username}' created successfully."
+            )
+            return redirect('accounts:manage_users')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = CustomUserCreationForm(user=request.user)
+
+    return render(request, 'accounts/create_user.html', {'form': form})
+
+
+# ✅ EDIT USER
+@login_required(login_url='login')
+@user_passes_test(lambda u: is_admin(u) or is_staff_admin(u))
+@never_cache
+def edit_user(request, user_id):
+    user_obj = get_object_or_404(CustomUser, id=user_id)
+
+    # Staff Admins cannot edit Admin accounts
+    if is_staff_admin(request.user) and user_obj.role == 'admin':
+        messages.error(request, "Access denied: You cannot edit Admin accounts.")
+        return redirect('accounts:manage_users')
+
+    form = CustomUserEditForm(request.POST or None, instance=user_obj)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f"User '{user_obj.username}' updated successfully.")
+        return redirect('accounts:manage_users')
+
+    return render(request, 'accounts/edit_user.html', {'form': form, 'user_obj': user_obj})
+
+
+# ✅ DELETE USER
+@login_required(login_url='login')
+@user_passes_test(is_admin)
+@never_cache
+def delete_user(request, user_id):
+    user_obj = get_object_or_404(CustomUser, id=user_id)
+    if request.method == 'POST':
+        user_obj.delete()
+        messages.success(request, f"✅ User '{user_obj.username}' deleted successfully.")
+        return redirect('accounts:manage_users')
+
+    context = {
+        'item_name': user_obj.username,
+        'item_type': 'User Account',
+        'cancel_url': '/accounts/manage-users/',
+    }
+    return render(request, 'includes/confirm_delete.html', context)
+
+
 # ✅ ADMIN DASHBOARD
+# ✅ ADMIN DASHBOARD (Enhanced Overview)
 @login_required(login_url='login')
 @user_passes_test(is_admin)
 @never_cache
 def admin_dashboard_view(request):
+    from reports.models import Profit
+    from django.db.models import Sum
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+
+    # --- Core Counts ---
     total_drivers = Driver.objects.count()
     total_vehicles = Vehicle.objects.count()
     total_queue = EntryLog.objects.filter(status=EntryLog.STATUS_SUCCESS).count()
-    total_profit = 0
+    total_profit = Profit.objects.aggregate(Sum('amount'))['amount__sum'] or 0
 
-    drivers = Driver.objects.all().order_by('last_name')
-    vehicles = Vehicle.objects.select_related('assigned_driver').order_by('license_plate')
+    # --- Profit Trend (Last 7 Days) ---
+    today = timezone.now().date()
+    last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+    chart_labels = [d.strftime("%b %d") for d in last_7_days]
+    chart_data = []
 
+    for day in last_7_days:
+        start = timezone.make_aware(datetime.combine(day, datetime.min.time()))
+        end = timezone.make_aware(datetime.combine(day, datetime.max.time()))
+        day_total = Profit.objects.filter(date_recorded__range=[start, end]).aggregate(Sum('amount'))['amount__sum'] or 0
+        chart_data.append(float(day_total))
+
+    # --- Render Template ---
     context = {
         'total_drivers': total_drivers,
         'total_vehicles': total_vehicles,
         'total_queue': total_queue,
         'total_profit': total_profit,
-        'drivers': drivers,
-        'vehicles': vehicles,
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
     }
     return render(request, 'accounts/admin_dashboard.html', context)
 
 
 # ✅ STAFF DASHBOARD
+# ✅ STAFF DASHBOARD (Enhanced Overview)
 @login_required(login_url='login')
 @user_passes_test(is_staff_admin)
 @never_cache
 def staff_dashboard_view(request):
+    from terminal.models import EntryLog
+    from vehicles.models import Driver, Vehicle
+
     total_drivers = Driver.objects.count()
     total_vehicles = Vehicle.objects.count()
+    total_queue = EntryLog.objects.filter(status=EntryLog.STATUS_SUCCESS).count()
 
     context = {
         'total_drivers': total_drivers,
         'total_vehicles': total_vehicles,
-        'register_driver_url': 'vehicles:register_driver',
-        'register_vehicle_url': 'vehicles:register_vehicle',
-        'deposit_menu_url': 'terminal:deposit_menu',
+        'total_queue': total_queue,
     }
     return render(request, 'accounts/staff_dashboard.html', context)
-
-
-# ✅ MANAGE USERS
-@login_required(login_url='login')
-@user_passes_test(is_admin)
-@never_cache
-def manage_users(request):
-    return render(request, "accounts/manage_users.html")
-
-
-@login_required(login_url='login')
-@user_passes_test(is_admin)
-@never_cache
-def create_user(request):
-    """Temporary placeholder for creating staff/admin accounts"""
-    return render(request, "accounts/create_user.html")

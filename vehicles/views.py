@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
@@ -355,3 +356,33 @@ def get_vehicles_by_driver(request, driver_id):
     vehicles = Vehicle.objects.filter(assigned_driver_id=driver_id)
     data = {"vehicles": [{"id": v.id, "license_plate": v.license_plate, "vehicle_name": v.vehicle_name} for v in vehicles]}
     return JsonResponse(data)
+
+
+
+# -------------------------
+# DELETE DRIVER (Admin only)
+# -------------------------
+@login_required
+@user_passes_test(is_admin)
+@never_cache
+def delete_driver(request, driver_id):
+    driver = get_object_or_404(Driver, id=driver_id)
+    if request.method == 'POST':
+        driver_name = f"{driver.first_name} {driver.last_name}"
+        driver.delete()
+        messages.success(request, f"✅ Driver '{driver_name}' deleted successfully.")
+        return redirect('vehicles:registered_drivers')
+    return redirect('vehicles:registered_drivers')
+
+
+@login_required
+@user_passes_test(is_admin)
+@never_cache
+def delete_vehicle(request, vehicle_id):
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id)
+    if request.method == 'POST':
+        vehicle_name = vehicle.vehicle_name
+        vehicle.delete()
+        messages.success(request, f"✅ Vehicle '{vehicle_name}' deleted successfully.")
+        return redirect('vehicles:registered_vehicles')
+    return redirect('vehicles:registered_vehicles')

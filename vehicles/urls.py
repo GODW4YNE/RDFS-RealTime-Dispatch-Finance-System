@@ -24,4 +24,8 @@ urlpatterns = [
     path('ajax-deposit/', views.ajax_deposit, name='ajax_deposit'),
     path('get-by-driver/<int:driver_id>/', views.get_vehicles_by_driver, name='get_vehicles_by_driver'),
 
+    path('drivers/delete/<int:driver_id>/', views.delete_driver, name='delete_driver'),
+    path('vehicles/delete/<int:vehicle_id>/', views.delete_vehicle, name='delete_vehicle'),
+
+
 ]

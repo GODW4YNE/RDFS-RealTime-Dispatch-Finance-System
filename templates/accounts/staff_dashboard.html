@@ -1,108 +1,96 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 {% block title %}Staff Dashboard | TicketNow{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
-            {% include 'includes/sidebar_staff.html' %}
-        </div>
-
-        <!-- Main content -->
-        <div class="col-md-9 col-lg-10 p-4">
-            <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Staff Dashboard</h2>
-            <p class="text-muted">Welcome, {{ user.username }}! Use the quick links to manage drivers, vehicles, and deposits.</p>
-
-            <!-- Quick Access Cards -->
-            <div class="row g-4 mt-3">
-                <!-- Register Driver -->
-                <div class="col-md-3">
-                    <a href="{% url 'vehicles:register_driver' %}" class="text-decoration-none">
-                        <div class="card text-center border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <i class="bi bi-person-plus fs-1 text-primary"></i>
-                                <h5 class="mt-2">Register Driver</h5>
-                                <p class="text-muted small">Open driver registration page.</p>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Register Vehicle -->
-                <div class="col-md-3">
-                    <a href="{% url 'vehicles:register_vehicle' %}" class="text-decoration-none">
-                        <div class="card text-center border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <i class="bi bi-truck-flatbed fs-1 text-success"></i>
-                                <h5 class="mt-2">Register Vehicle</h5>
-                                <p class="text-muted small">Open vehicle registration page.</p>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Deposit Menu -->
-                <div class="col-md-3">
-                    <a href="{% url 'terminal:deposit_menu' %}" class="text-decoration-none">
-                        <div class="card text-center border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <i class="bi bi-wallet2 fs-1 text-warning"></i>
-                                <h5 class="mt-2">Deposit Menu</h5>
-                                <p class="text-muted small">Open deposit management page.</p>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- Manage Queue -->
-                <div class="col-md-3">
-                    <a href="{% url 'terminal:terminal_queue' %}" class="text-decoration-none">
-                        <div class="card text-center border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <i class="bi bi-list-check fs-1 text-danger"></i>
-                                <h5 class="mt-2">Manage Queue</h5>
-                                <p class="text-muted small">Queue controls & ordering.</p>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="row g-4 mt-5">
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm h-100 text-center">
-                        <div class="card-body">
-                            <i class="bi bi-person-badge fs-1 text-primary"></i>
-                            <h5 class="mb-3">Registered Drivers</h5>
-                            <h3 class="fw-bold text-primary">{{ total_drivers|default:"0" }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm h-100 text-center">
-                        <div class="card-body">
-                            <i class="bi bi-truck fs-1 text-success"></i>
-                            <h5 class="mb-3">Registered Vehicles</h5>
-                            <h3 class="fw-bold text-success">{{ total_vehicles|default:"0" }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {% if messages %}
-            <div class="mt-4">
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
+      {% include 'includes/sidebar.html' %}
     </div>
+
+    <!-- Main Dashboard Content -->
+    <div class="col-md-9 col-lg-10 p-4">
+      <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Staff Dashboard</h2>
+      <p class="text-muted">Welcome, {{ user.username }}. Here’s your quick overview and actions.</p>
+
+      <!-- Summary Cards -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-4">
+          <div class="card shadow-sm border-0 text-center bg-primary text-white">
+            <div class="card-body">
+              <i class="bi bi-person-badge fs-2"></i>
+              <h6 class="mt-2">Registered Drivers</h6>
+              <h3 class="fw-bold">{{ total_drivers }}</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card shadow-sm border-0 text-center bg-success text-white">
+            <div class="card-body">
+              <i class="bi bi-truck fs-2"></i>
+              <h6 class="mt-2">Registered Vehicles</h6>
+              <h3 class="fw-bold">{{ total_vehicles }}</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card shadow-sm border-0 text-center bg-warning text-dark">
+            <div class="card-body">
+              <i class="bi bi-list-check fs-2"></i>
+              <h6 class="mt-2">Vehicles in Queue</h6>
+              <h3 class="fw-bold">{{ total_queue }}</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Links -->
+      <div class="row mt-4 mb-5">
+        <div class="col-md-4">
+          <a href="{% url 'vehicles:register_driver' %}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 hover-shadow text-center">
+              <div class="card-body">
+                <i class="bi bi-person-plus fs-2 text-primary"></i>
+                <h5 class="mt-2">Register Driver</h5>
+                <p class="text-muted small">Add a new driver record to the system.</p>
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <div class="col-md-4">
+          <a href="{% url 'vehicles:register_vehicle' %}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 hover-shadow text-center">
+              <div class="card-body">
+                <i class="bi bi-truck-front fs-2 text-success"></i>
+                <h5 class="mt-2">Register Vehicle</h5>
+                <p class="text-muted small">Add a vehicle and assign it to a driver.</p>
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <div class="col-md-4">
+          <a href="{% url 'terminal:deposit_menu' %}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 hover-shadow text-center">
+              <div class="card-body">
+                <i class="bi bi-wallet2 fs-2 text-warning"></i>
+                <h5 class="mt-2">Deposit Menu</h5>
+                <p class="text-muted small">Record wallet deposits for drivers.</p>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
