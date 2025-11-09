@@ -3,156 +3,76 @@
 {% block title %}Admin Dashboard | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="row">
-    <!-- Sidebar -->
-    <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
-      {% include 'includes/sidebar.html' %}
+<div class="p-4">
+  <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
+  <p class="text-muted">Welcome back, {{ user.username }}. Here’s a quick overview of terminal activity.</p>
+
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 text-center bg-primary text-white">
+        <div class="card-body">
+          <i class="bi bi-person-badge fs-2"></i>
+          <h6 class="mt-2">Registered Drivers</h6>
+          <h3 class="fw-bold">{{ total_drivers }}</h3>
+        </div>
+      </div>
     </div>
 
-    <!-- Main Dashboard Content -->
-    <div class="col-md-9 col-lg-10 p-4">
-      <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
-      <p class="text-muted">Welcome back, {{ user.username }}. Here’s a quick overview of terminal activity.</p>
-
-      <!-- Summary Cards -->
-      <div class="row g-4 mb-4">
-        <div class="col-md-3">
-          <div class="card shadow-sm border-0 text-center bg-primary text-white">
-            <div class="card-body">
-              <i class="bi bi-person-badge fs-2"></i>
-              <h6 class="mt-2">Registered Drivers</h6>
-              <h3 class="fw-bold">{{ total_drivers }}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card shadow-sm border-0 text-center bg-success text-white">
-            <div class="card-body">
-              <i class="bi bi-truck fs-2"></i>
-              <h6 class="mt-2">Registered Vehicles</h6>
-              <h3 class="fw-bold">{{ total_vehicles }}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card shadow-sm border-0 text-center bg-warning text-dark">
-            <div class="card-body">
-              <i class="bi bi-list-check fs-2"></i>
-              <h6 class="mt-2">Vehicles in Queue</h6>
-              <h3 class="fw-bold">{{ total_queue }}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card shadow-sm border-0 text-center bg-danger text-white">
-            <div class="card-body">
-              <i class="bi bi-cash-stack fs-2"></i>
-              <h6 class="mt-2">Total Profit</h6>
-              <h3 class="fw-bold">₱{{ total_profit|floatformat:2 }}</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Profit Chart -->
-      <div class="card shadow-sm border-0 mb-5">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 text-center bg-success text-white">
         <div class="card-body">
-          <h5><i class="bi bi-graph-up"></i> Profit Trend (Last 7 Days)</h5>
-          <canvas id="profitChart" height="120"></canvas>
+          <i class="bi bi-truck fs-2"></i>
+          <h6 class="mt-2">Registered Vehicles</h6>
+          <h3 class="fw-bold">{{ total_vehicles }}</h3>
         </div>
       </div>
+    </div>
 
-      <!-- Quick Links -->
-      <div class="row mt-4 mb-5">
-        <div class="col-md-4">
-          <a href="{% url 'accounts:manage_users' %}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm h-100 hover-shadow text-center">
-              <div class="card-body">
-                <i class="bi bi-people fs-2 text-primary"></i>
-                <h5 class="mt-2">Manage Accounts</h5>
-                <p class="text-muted small">Add or edit admin and staff accounts.</p>
-              </div>
-            </div>
-          </a>
-        </div>
-
-        <div class="col-md-4">
-          <a href="{% url 'reports:profit_report' %}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm h-100 hover-shadow text-center">
-              <div class="card-body">
-                <i class="bi bi-graph-up-arrow fs-2 text-success"></i>
-                <h5 class="mt-2">View Profit Reports</h5>
-                <p class="text-muted small">See all recorded profits by date.</p>
-              </div>
-            </div>
-          </a>
-        </div>
-
-        <div class="col-md-4">
-          <a href="#" class="text-decoration-none">
-            <div class="card border-0 shadow-sm h-100 hover-shadow text-center">
-              <div class="card-body">
-                <i class="bi bi-clock-history fs-2 text-warning"></i>
-                <h5 class="mt-2">Adjust Terminal Queue</h5>
-                <p class="text-muted small">Manage waiting times and queue order.</p>
-              </div>
-            </div>
-          </a>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 text-center bg-warning text-dark">
+        <div class="card-body">
+          <i class="bi bi-list-check fs-2"></i>
+          <h6 class="mt-2">Vehicles in Queue</h6>
+          <h3 class="fw-bold">{{ total_queue }}</h3>
         </div>
       </div>
+    </div>
 
-      <div class="text-end">
-        <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 text-center bg-danger text-white">
+        <div class="card-body">
+          <i class="bi bi-cash-stack fs-2"></i>
+          <h6 class="mt-2">Total Profit</h6>
+          <h3 class="fw-bold">₱{{ total_profit|floatformat:2 }}</h3>
+        </div>
       </div>
     </div>
   </div>
+
+  <div class="card shadow-sm border-0 mb-5">
+    <div class="card-body">
+      <h5><i class="bi bi-graph-up"></i> Profit Trend (Last 7 Days)</h5>
+      <canvas id="profitChart" height="120"></canvas>
+    </div>
+  </div>
+
+  <div class="text-end">
+    <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
+  </div>
 </div>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
   const ctx = document.getElementById("profitChart");
+  if (!ctx) return;
   new Chart(ctx, {
     type: "line",
     data: {
       labels: {{ chart_labels|safe }},
-      datasets: [{
-        label: "Profit (₱)",
-        data: {{ chart_data|safe }},
-        borderColor: "#007bff",
-        backgroundColor: "rgba(0, 123, 255, 0.2)",
-        fill: true,
-        tension: 0.4,
-        borderWidth: 2
-      }]
+      datasets: [{ label: "Profit (₱)", data: {{ chart_data|safe }}, borderColor: "#007bff", backgroundColor: "rgba(0,123,255,0.15)", fill:true, tension:0.4 }]
     },
-    options: {
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: function(value) {
-              return "₱" + value;
-            }
-          }
-        }
-      },
-      plugins: {
-        legend: { display: true },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              return "₱" + context.formattedValue;
-            }
-          }
-        }
-      }
-    }
+    options: { scales: { y: { beginAtZero:true } } }
   });
 });
 </script>

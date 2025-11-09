@@ -36,6 +36,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'accounts.middleware.SessionSecurityMiddleware',
 ]
 
 # --- Root URLs ---
@@ -93,4 +94,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 LOGIN_URL = '/'
+
+
+# 🔐 Session and Security Settings
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 900  # 15 minutes (auto logout after inactivity)
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session on activity
+
+CSRF_COOKIE_SECURE = False  # Set True if HTTPS
+SESSION_COOKIE_SECURE = False  # Set True if HTTPS
 

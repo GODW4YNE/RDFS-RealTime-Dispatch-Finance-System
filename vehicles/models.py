@@ -10,6 +10,32 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
+# ======================================================
+# ROUTE MODEL (NEW)
+# ======================================================
+class Route(models.Model):
+    """Represents a route, e.g., Maasin → Sogod."""
+    name = models.CharField(max_length=150, unique=True, help_text="Example: Maasin - Sogod")
+    origin = models.CharField(max_length=100)
+    destination = models.CharField(max_length=100)
+    base_fare = models.DecimalField(max_digits=8, decimal_places=2, default=0.00, help_text="Base fare (optional)")
+    active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Route"
+        verbose_name_plural = "Routes"
+        ordering = ["origin", "destination"]
+
+    def __str__(self):
+        return f"{self.origin} → {self.destination}"
+
+
+# ======================================================
+# DRIVER MODEL
+# ======================================================
 class Driver(models.Model):
     driver_id = models.CharField(max_length=100, unique=True, default="", blank=True)
     first_name = models.CharField(max_length=100)
@@ -44,6 +70,9 @@ class Driver(models.Model):
         return f"{self.first_name} {self.last_name} ({self.driver_id})"
 
 
+# ======================================================
+# VEHICLE MODEL
+# ======================================================
 class Vehicle(models.Model):
     VEHICLE_TYPES = [
         ('jeepney', 'Jeepney'),
@@ -76,7 +105,10 @@ class Vehicle(models.Model):
     registration_number = models.CharField(max_length=50, unique=True)
     registration_expiry = models.DateField(blank=True, null=True)
     license_plate = models.CharField(max_length=50, unique=True)
-    manufacturer = models.CharField(max_length=100, blank=True, null=True)
+
+    # 🔁 REPLACED manufacturer → route
+    route = models.ForeignKey(Route, on_delete=models.SET_NULL, null=True, blank=True, related_name='vehicles')
+
     seat_capacity = models.PositiveIntegerField(blank=True, null=True)
     qr_code = models.ImageField(upload_to='qrcodes/', null=True, blank=True)
     qr_value = models.CharField(max_length=255, unique=True, blank=True, null=True)
@@ -110,9 +142,13 @@ class Vehicle(models.Model):
             super().save(update_fields=['qr_code', 'qr_value'])
 
     def __str__(self):
-        return f"{self.vehicle_name} ({self.license_plate})"
+        route_display = self.route.__str__() if self.route else "No Route"
+        return f"{self.vehicle_name} ({self.license_plate}) – {route_display}"
 
 
+# ======================================================
+# WALLET MODEL
+# ======================================================
 class Wallet(models.Model):
     vehicle = models.OneToOneField(Vehicle, on_delete=models.CASCADE, related_name='wallet')
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -125,6 +161,9 @@ class Wallet(models.Model):
         return f"{self.vehicle.assigned_driver}'s Wallet - ₱{self.balance}"
 
 
+# ======================================================
+# DEPOSIT MODEL
+# ======================================================
 class Deposit(models.Model):
     """Cash-only deposits: automatically successful and instantly added to wallet."""
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='deposits')
@@ -159,6 +198,9 @@ class Deposit(models.Model):
         return f"Deposit {self.reference_number} - ₱{self.amount} (Cash)"
 
 
+# ======================================================
+# SIGNALS
+# ======================================================
 @receiver(post_save, sender=Vehicle)
 def create_wallet_for_vehicle(sender, instance, created, **kwargs):
     if created:

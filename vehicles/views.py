@@ -40,22 +40,18 @@ def ocr_process(request):
         if not image_data:
             return JsonResponse({'error': 'No image data provided.'})
 
-        # Decode Base64 image
         format, imgstr = image_data.split(';base64,')
         nparr = np.frombuffer(base64.b64decode(imgstr), np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-        # Preprocess image
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = cv2.bilateralFilter(gray, 11, 17, 17)
         _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
 
-        # OCR text extraction
         raw_text = pytesseract.image_to_string(thresh)
         print("🧾 OCR RAW TEXT:", raw_text)
         text = re.sub(r'[^A-Za-z0-9\s:/-]', ' ', raw_text).upper()
 
-        # Extract data patterns (best-effort; adjust regex as needed)
         license_number = re.search(r'([A-Z]{1,2}\d{2,3}-\d{2}-\d{6,7})', text)
         if not license_number:
             license_number = re.search(r'(?:[A-Z]{3}-?\d{6,7})', text)
@@ -77,7 +73,7 @@ def ocr_process(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)})
-
+    
 
 # -------------------------
 # STAFF DASHBOARD
@@ -103,14 +99,15 @@ def staff_dashboard(request):
                 try:
                     vehicle = vehicle_form.save(commit=False)
                     cd = vehicle_form.cleaned_data
-                    if 'cr_number' in cd:
-                        vehicle.cr_number = cd.get('cr_number') or vehicle.cr_number
-                    if 'or_number' in cd:
-                        vehicle.or_number = cd.get('or_number') or vehicle.or_number
-                    if 'vin_number' in cd:
-                        vehicle.vin_number = cd.get('vin_number') or vehicle.vin_number
-                    if 'year_model' in cd:
-                        vehicle.year_model = cd.get('year_model') or vehicle.year_model
+
+                    # ✅ Assign selected route
+                    if cd.get('route'):
+                        vehicle.route = cd['route']
+
+                    # Other field validations (safeguard)
+                    for field in ['cr_number', 'or_number', 'vin_number', 'year_model']:
+                        if field in cd:
+                            setattr(vehicle, field, cd.get(field) or getattr(vehicle, field))
 
                     vehicle.full_clean()
                     vehicle.save()
@@ -132,7 +129,6 @@ def staff_dashboard(request):
     }
     return render(request, 'accounts/staff_dashboard.html', context)
 
-
 # -------------------------
 # VEHICLE REGISTRATION (page)
 # -------------------------
@@ -145,14 +141,14 @@ def vehicle_registration(request):
             try:
                 vehicle = form.save(commit=False)
                 cd = form.cleaned_data
-                if 'cr_number' in cd:
-                    vehicle.cr_number = cd.get('cr_number') or vehicle.cr_number
-                if 'or_number' in cd:
-                    vehicle.or_number = cd.get('or_number') or vehicle.or_number
-                if 'vin_number' in cd:
-                    vehicle.vin_number = cd.get('vin_number') or vehicle.vin_number
-                if 'year_model' in cd:
-                    vehicle.year_model = cd.get('year_model') or vehicle.year_model
+
+                # ✅ Assign route
+                if cd.get('route'):
+                    vehicle.route = cd['route']
+
+                for field in ['cr_number', 'or_number', 'vin_number', 'year_model']:
+                    if field in cd:
+                        setattr(vehicle, field, cd.get(field) or getattr(vehicle, field))
 
                 vehicle.full_clean()
                 vehicle.save()
@@ -166,7 +162,7 @@ def vehicle_registration(request):
         else:
             messages.error(request, "❌ Please correct the errors.")
 
-    vehicles = Vehicle.objects.select_related('assigned_driver').all().order_by('-date_registered')
+    vehicles = Vehicle.objects.select_related('assigned_driver', 'route').all().order_by('-date_registered')
     return render(request, 'vehicles/register_vehicle.html', {'form': form, 'vehicles': vehicles})
 
 
@@ -197,14 +193,14 @@ def ajax_register_vehicle(request):
             try:
                 vehicle = form.save(commit=False)
                 cd = form.cleaned_data
-                if 'cr_number' in cd:
-                    vehicle.cr_number = cd.get('cr_number') or vehicle.cr_number
-                if 'or_number' in cd:
-                    vehicle.or_number = cd.get('or_number') or vehicle.or_number
-                if 'vin_number' in cd:
-                    vehicle.vin_number = cd.get('vin_number') or vehicle.vin_number
-                if 'year_model' in cd:
-                    vehicle.year_model = cd.get('year_model') or vehicle.year_model
+
+                # ✅ Assign route
+                if cd.get('route'):
+                    vehicle.route = cd['route']
+
+                for field in ['cr_number', 'or_number', 'vin_number', 'year_model']:
+                    if field in cd:
+                        setattr(vehicle, field, cd.get(field) or getattr(vehicle, field))
 
                 vehicle.full_clean()
                 vehicle.save()

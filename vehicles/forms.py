@@ -3,48 +3,23 @@ from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 from datetime import date
 import re
-from .models import Driver, Vehicle, Deposit, Wallet
+from .models import Driver, Vehicle, Deposit, Wallet, Route
 from terminal.models import SystemSettings
+
 
 # ✅ Placeholder for potential extended form
 class FullVehicleDetailsForm(forms.Form):
     pass
 
 
+# ======================================================
+# VEHICLE REGISTRATION FORM
+# ======================================================
 class VehicleRegistrationForm(forms.ModelForm):
     VIN_PATTERN = r"^[A-HJ-NPR-Z0-9]{17}$"  # 17 chars, excludes I, O, Q
     PLATE_PATTERN = r"^[A-Z]{3}\s?\d{3,4}$"  # ABC 1234
     OR_CR_PATTERN = r"^[A-Z0-9]{6,12}$"      # 6–12 alphanumeric
     REG_NUM_PATTERN = r"^[A-Z0-9\-]{6,12}$"  # Alphanumeric registration
-
-    # 🇵🇭 Common Jeepney, Van, and Bus brands in the Philippines
-    MANUFACTURER_CHOICES = [
-        ('', 'Select Manufacturer'),
-        # 🚌 Bus brands
-        ('Hino', 'Hino'),
-        ('Isuzu', 'Isuzu'),
-        ('Fuso', 'Fuso'),
-        ('Daewoo', 'Daewoo'),
-        ('Hyundai', 'Hyundai'),
-        ('King Long', 'King Long'),
-        ('Yutong', 'Yutong'),
-        ('Golden Dragon', 'Golden Dragon'),
-        # 🚐 Van brands
-        ('Toyota', 'Toyota'),
-        ('Nissan', 'Nissan'),
-        ('Hyundai (Van)', 'Hyundai'),
-        ('Kia', 'Kia'),
-        ('Foton', 'Foton'),
-        ('Maxus', 'Maxus'),
-        # 🚙 Jeepney / Modern Jeepney brands
-        ('Sarao', 'Sarao Motors'),
-        ('Francisco', 'Francisco Motors'),
-        ('Hyundai Modern Jeepney', 'Hyundai Modern Jeepney'),
-        ('Isuzu Modern Jeepney', 'Isuzu Modern Jeepney'),
-        ('Foton Modern Jeepney', 'Foton Modern Jeepney'),
-        ('Hino Modern Jeepney', 'Hino Modern Jeepney'),
-        ('Other', 'Other'),
-    ]
 
     class Meta:
         model = Vehicle
@@ -53,6 +28,7 @@ class VehicleRegistrationForm(forms.ModelForm):
             'vehicle_type',
             'ownership_type',
             'assigned_driver',
+            'route',
             'cr_number',
             'or_number',
             'vin_number',
@@ -60,7 +36,6 @@ class VehicleRegistrationForm(forms.ModelForm):
             'registration_number',
             'registration_expiry',
             'license_plate',
-            'manufacturer',
             'seat_capacity',
         ]
         widgets = {
@@ -80,6 +55,10 @@ class VehicleRegistrationForm(forms.ModelForm):
                 'class': 'form-select searchable-select',
                 'required': 'required'
             }),
+            'route': forms.Select(attrs={
+                'class': 'form-select searchable-select',
+                'required': 'required'
+            }),
             'cr_number': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'CR Number',
@@ -95,7 +74,6 @@ class VehicleRegistrationForm(forms.ModelForm):
                 'placeholder': '17-character VIN',
                 'required': 'required'
             }),
-            # ✅ Typable year model
             'year_model': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'e.g. 2024',
@@ -118,12 +96,6 @@ class VehicleRegistrationForm(forms.ModelForm):
                 'placeholder': 'ABC 1234',
                 'required': 'required'
             }),
-            # 🟩 visible and clean manufacturer dropdown
-            'manufacturer': forms.Select(attrs={
-                'class': 'form-select text-dark bg-white border',
-                'style': 'color:black;background-color:white;',
-                'required': 'required'
-            }),
             'seat_capacity': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': 1,
@@ -133,11 +105,16 @@ class VehicleRegistrationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['manufacturer'].choices = self.MANUFACTURER_CHOICES
+        # ✅ Load active routes only
+        self.fields['route'].queryset = Route.objects.filter(active=True).order_by('origin', 'destination')
+        self.fields['route'].label_from_instance = lambda obj: f"{obj.origin} → {obj.destination}"
         self.fields['assigned_driver'].queryset = Driver.objects.all().order_by('first_name')
         self.fields['assigned_driver'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} ({obj.driver_id})"
         self.fields['vehicle_name'].required = False
 
+    # ==================================================
+    # Validation methods
+    # ==================================================
     def clean_seat_capacity(self):
         seat_capacity = self.cleaned_data.get('seat_capacity')
         vehicle_type = self.cleaned_data.get('vehicle_type')
@@ -200,7 +177,9 @@ class VehicleRegistrationForm(forms.ModelForm):
         return plate
 
 
-# 🧍 Enhanced Driver Registration Form (unchanged)
+# ======================================================
+# DRIVER REGISTRATION FORM
+# ======================================================
 class DriverRegistrationForm(forms.ModelForm):
     BLOOD_TYPE_CHOICES = [
         ('', 'Select Blood Type'),
@@ -260,7 +239,9 @@ class DriverRegistrationForm(forms.ModelForm):
         return expiry
 
 
-# ✅ Simplified Cash-Only Deposit Form
+# ======================================================
+# DEPOSIT FORM
+# ======================================================
 class DepositForm(forms.ModelForm):
     amount = forms.DecimalField(
         label="Deposit Amount (₱)",

@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.cache import never_cache
 from django.http import JsonResponse, HttpResponse
-from vehicles.models import Vehicle, Wallet, Driver, Deposit
+from vehicles.models import Vehicle, Wallet, Driver, Deposit, Route
 from .models import EntryLog, SystemSettings
 from decimal import Decimal
 from django import forms
@@ -16,19 +16,13 @@ from accounts.utils import is_staff_admin_or_admin, is_admin   # ✅ imported sh
 # ===============================
 #   DEPOSIT MENU (Role-based)
 # ===============================
-@login_required(login_url='login')
-@user_passes_test(is_staff_admin_or_admin)
-@never_cache
 def deposit_menu(request):
-    """Admin sees history with filters; staff can record new deposits."""
     settings = SystemSettings.get_solo()
     min_deposit = settings.min_deposit_amount
     user = request.user
 
-    # 🟩 Base Query
     deposits = Deposit.objects.select_related('wallet__vehicle__assigned_driver').order_by('-created_at')
 
-    # 🧠 If user is ADMIN → show history & filters
     if user.role == "admin":
         start_date = request.GET.get("start_date", "")
         end_date = request.GET.get("end_date", "")
@@ -51,7 +45,6 @@ def deposit_menu(request):
         }
         return render(request, "terminal/deposit_menu.html", context)
 
-    # 🟦 If user is STAFF ADMIN → show form + recent deposits
     drivers_with_vehicles = (
         Driver.objects.filter(vehicles__isnull=False)
         .distinct()
@@ -107,41 +100,7 @@ def deposit_menu(request):
 @login_required(login_url='login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
-def terminal_queue(request):
-    return render(request, 'terminal/terminal_queue.html')
-
-
-@login_required(login_url='login')
-@user_passes_test(is_staff_admin_or_admin)
-@never_cache
-def queue_data(request):
-    """AJAX endpoint for live queue refresh."""
-    logs = (
-        EntryLog.objects.filter(status=EntryLog.STATUS_SUCCESS, is_active=True)
-        .select_related("vehicle__assigned_driver", "staff")
-        .order_by("-created_at")[:20]
-    )
-    data = []
-    for log in logs:
-        v = log.vehicle
-        d = v.assigned_driver if v else None
-        data.append({
-            "id": log.id,
-            "vehicle_plate": getattr(v, "license_plate", "N/A") if v else "—",
-            "vehicle_name": getattr(v, "vehicle_name", "—") if v else "—",
-            "driver_name": f"{d.first_name} {d.last_name}" if d else "—",
-            "fee": float(log.fee_charged),
-            "staff": log.staff.username if log.staff else "—",
-            "time": log.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        })
-    return JsonResponse({"entries": data})
-
-
-@login_required(login_url='login')
-@user_passes_test(is_staff_admin_or_admin)
-@never_cache
 def simple_queue_view(request):
-    """Display-only queue for TV display."""
     settings = SystemSettings.get_solo()
     duration = getattr(settings, "departure_duration_minutes", 30)
     logs = (
@@ -151,24 +110,31 @@ def simple_queue_view(request):
     )
 
     queue = []
+    ph_tz = pytz_timezone("Asia/Manila")
+
     for log in logs:
         v = log.vehicle
         d = v.assigned_driver if v else None
         departure_time = log.created_at + timedelta(minutes=duration)
+
+        entry_time = timezone.localtime(log.created_at, ph_tz)
+        departure_time = timezone.localtime(departure_time, ph_tz)
+
         queue.append({
             "plate": getattr(v, "license_plate", "N/A"),
             "driver": f"{d.first_name} {d.last_name}" if d else "N/A",
-            "entry_time": timezone.localtime(log.created_at).strftime("%I:%M %p"),
-            "departure_time": timezone.localtime(departure_time).strftime("%I:%M %p"),
+            "entry_time": entry_time.strftime("%I:%M %p"),
+            "departure_time": departure_time.strftime("%I:%M %p"),
         })
 
-    context = {"queue": queue, "stay_duration": duration, "now": timezone.localtime(timezone.now())}
+    context = {
+        "queue": queue,
+        "stay_duration": duration,
+        "now": timezone.localtime(timezone.now(), ph_tz)
+    }
     return render(request, "terminal/simple_queue.html", context)
 
 
-# ===============================
-#   MANAGE QUEUE
-# ===============================
 @login_required(login_url='login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
@@ -181,21 +147,32 @@ def manage_queue(request):
         .order_by("-created_at")
     )
 
+    ph_tz = pytz_timezone("Asia/Manila")
     queue = []
+
     for log in logs:
         v = log.vehicle
         d = v.assigned_driver if v else None
         departure_time = log.created_at + timedelta(minutes=duration)
+
+        entry_time = timezone.localtime(log.created_at, ph_tz)
+        departure_time = timezone.localtime(departure_time, ph_tz)
+
         queue.append({
             "id": log.id,
             "plate": getattr(v, "license_plate", "N/A"),
             "driver": f"{d.first_name} {d.last_name}" if d else "N/A",
-            "entry_time": timezone.localtime(log.created_at).strftime("%I:%M %p"),
-            "departure_time": timezone.localtime(departure_time).strftime("%I:%M %p"),
+            "entry_time": entry_time.strftime("%I:%M %p"),
+            "departure_time": departure_time.strftime("%I:%M %p"),
             "staff": log.staff.username if log.staff else "—",
         })
 
-    return render(request, "terminal/manage_queue.html", {"queue": queue, "stay_duration": duration})
+    context = {
+        "queue": queue,
+        "stay_duration": duration,
+        "now": timezone.localtime(timezone.now(), ph_tz)
+    }
+    return render(request, "terminal/manage_queue.html", context)
 
 
 # ===============================
@@ -425,3 +402,58 @@ def queue_history(request):
     return render(request, "terminal/queue_history.html",
                   {"logs": logs[:200], "status_filter": status_filter,
                    "start_date": start_date, "end_date": end_date})
+
+
+@login_required(login_url='login')
+@user_passes_test(is_admin)
+@never_cache
+def manage_routes(request):
+    """Admin-only page for adding, editing, and deleting routes."""
+    routes = Route.objects.all().order_by('origin', 'destination')
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        route_id = request.POST.get("route_id")
+        name = request.POST.get("name", "").strip()
+        origin = request.POST.get("origin", "").strip()
+        destination = request.POST.get("destination", "").strip()
+        base_fare = request.POST.get("base_fare", "").strip()
+        active = bool(request.POST.get("active"))
+
+        if not origin or not destination:
+            messages.error(request, "⚠️ Both origin and destination are required.")
+            return redirect("terminal:manage_routes")
+
+        try:
+            base_fare = Decimal(base_fare) if base_fare else 0.00
+        except:
+            base_fare = 0.00
+
+        if action == "add":
+            Route.objects.create(
+                name=name or f"{origin} - {destination}",
+                origin=origin,
+                destination=destination,
+                base_fare=base_fare,
+                active=active,
+            )
+            messages.success(request, f"✅ Route {origin} → {destination} added successfully!")
+
+        elif action == "edit" and route_id:
+            route = get_object_or_404(Route, id=route_id)
+            route.name = name or f"{origin} - {destination}"
+            route.origin = origin
+            route.destination = destination
+            route.base_fare = base_fare
+            route.active = active
+            route.save()
+            messages.success(request, f"✅ Route {origin} → {destination} updated!")
+
+        elif action == "delete" and route_id:
+            route = get_object_or_404(Route, id=route_id)
+            route.delete()
+            messages.success(request, f"🗑️ Route deleted successfully.")
+
+        return redirect("terminal:manage_routes")
+
+    return render(request, "terminal/manage_routes.html", {"routes": routes})

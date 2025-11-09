@@ -67,10 +67,11 @@
                     <div class="form-control border-danger p-0">{{ field }}</div>
                     <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
                   {% else %}
-                    {% if field.name == 'manufacturer' %}
-                      <div class="manufacturer-wrapper">
+                    {% if field.name == 'route' %}
+                      <div class="route-wrapper">
                         {{ field }}
                       </div>
+                      <div class="form-text text-muted">Select the route for this vehicle.</div>
                     {% else %}
                       {{ field }}
                     {% endif %}
@@ -104,29 +105,13 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  // ✅ Enable Select2 only for the driver dropdown
+  // ✅ Enable Select2 for driver and route dropdowns
   if (window.$ && $.fn && $.fn.select2) {
-    $('#id_assigned_driver').select2({
-      placeholder: "Search driver...",
+    $('#id_assigned_driver, #id_route').select2({
+      placeholder: "Select option...",
       allowClear: true,
       width: '100%'
     });
-  }
-
-  // 🛑 Disable Select2 on manufacturer dropdown to keep native look
-  if ($('#id_manufacturer').data('select2')) {
-    $('#id_manufacturer').select2('destroy');
-  }
-
-  // 🧾 Force visible width and text color
-  const manufacturerSelect = document.getElementById("id_manufacturer");
-  if (manufacturerSelect) {
-    manufacturerSelect.style.display = "block";
-    manufacturerSelect.style.width = "100%";
-    manufacturerSelect.style.color = "#212529";
-    manufacturerSelect.style.backgroundColor = "#fff";
-    manufacturerSelect.style.border = "1px solid #ced4da";
-    manufacturerSelect.style.padding = "0.5rem";
   }
 
   // Auto-focus first invalid field
