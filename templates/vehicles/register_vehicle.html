@@ -1,98 +1,96 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
+
 {% block title %}Register Vehicle | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="row">
-    <!-- Sidebar -->
-    <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
-      {% include 'includes/sidebar.html' %}
-    </div>
+<div class="p-4">
+  <h3 class="mb-3"><i class="bi bi-truck"></i> Register Vehicle</h3>
+  <p class="text-muted">
+    Fill in all required fields (<span class="text-danger">*</span>) to register a vehicle and link it to a driver.
+  </p>
 
-    <!-- Main Content -->
-    <div class="col-md-9 col-lg-10 p-4">
-      <h3 class="mb-3"><i class="bi bi-truck"></i> Register Vehicle</h3>
-      <p class="text-muted">
-        Fill in all required fields (<span class="text-danger">*</span>) to register a vehicle and link it to a driver.
-      </p>
-
-      {% if form.non_field_errors %}
-      <div class="alert alert-danger">
-        <strong>Form Error:</strong> {{ form.non_field_errors }}
-      </div>
-      {% endif %}
-
-      <!-- Flash Messages -->
-      {% if messages %}
-      {% for message in messages %}
+  <!-- Flash Messages -->
+  {% if messages %}
+    {% for message in messages %}
       <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
         {{ message }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      {% endfor %}
-      {% endif %}
+    {% endfor %}
+  {% endif %}
 
-      <!-- Vehicle Registration Form -->
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-          <form method="POST" action="{% url 'vehicles:register_vehicle' %}" novalidate>
-            {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">
+    <strong>Form Error:</strong> {{ form.non_field_errors }}
+  </div>
+  {% endif %}
 
-            <!-- Assigned Driver -->
-            <div class="mb-3">
-              <label class="form-label fw-bold">
-                Assign Driver <span class="text-danger">*</span>
-              </label>
-              {% if form.assigned_driver.errors %}
-                <div class="form-control border-danger p-0">{{ form.assigned_driver }}</div>
-                <div class="text-danger small mt-1">{{ form.assigned_driver.errors|striptags }}</div>
-              {% else %}
-                {{ form.assigned_driver }}
-              {% endif %}
-              <div class="form-text text-muted">Search and select a registered driver.</div>
-            </div>
+  <!-- Vehicle Registration Form -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data"
+            hx-post="{% url 'vehicles:register_vehicle' %}"
+            hx-target="#main-content"
+            hx-swap="innerHTML transition:true"
+            id="vehicleForm">
+        {% csrf_token %}
 
-            <!-- Vehicle Information Fields -->
-            <div class="row">
-              {% for field in form %}
-                {% if field.name != 'assigned_driver' %}
-                <div class="col-md-6 mb-3">
-                  <label class="form-label fw-bold">
-                    {{ field.label }}
-                    {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                  </label>
-
-                  {% if field.errors %}
-                    <div class="form-control border-danger p-0">{{ field }}</div>
-                    <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
-                  {% else %}
-                    {% if field.name == 'route' %}
-                      <div class="route-wrapper">
-                        {{ field }}
-                      </div>
-                      <div class="form-text text-muted">Select the route for this vehicle.</div>
-                    {% else %}
-                      {{ field }}
-                    {% endif %}
-                  {% endif %}
-                </div>
-                {% endif %}
-              {% endfor %}
-            </div>
-
-            <!-- Actions -->
-            <div class="text-end mt-3">
-              <button type="submit" class="btn btn-success btn-lg">
-                <i class="bi bi-save"></i> Register Vehicle
-              </button>
-              <a href="{% url 'staff_dashboard' %}" class="btn btn-secondary btn-lg">
-                <i class="bi bi-arrow-left-circle"></i> Back to Dashboard
-              </a>
-            </div>
-          </form>
+        <!-- Assigned Driver -->
+        <div class="mb-3">
+          <label class="form-label fw-bold">
+            Assign Driver <span class="text-danger">*</span>
+          </label>
+          {% if form.assigned_driver.errors %}
+            <div class="form-control border-danger p-0">{{ form.assigned_driver }}</div>
+            <div class="text-danger small mt-1">{{ form.assigned_driver.errors|striptags }}</div>
+          {% else %}
+            {{ form.assigned_driver }}
+          {% endif %}
+          <div class="form-text text-muted">Search and select a registered driver.</div>
         </div>
-      </div>
+
+        <!-- Vehicle Information Fields -->
+        <div class="row">
+          {% for field in form %}
+            {% if field.name != 'assigned_driver' %}
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">
+                  {{ field.label }}
+                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+
+                {% if field.errors %}
+                  <div class="form-control border-danger p-0">{{ field }}</div>
+                  <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
+                {% else %}
+                  {% if field.name == 'route' %}
+                    <div class="route-wrapper">
+                      {{ field }}
+                    </div>
+                    <div class="form-text text-muted">Select the route for this vehicle.</div>
+                  {% else %}
+                    {{ field }}
+                  {% endif %}
+                {% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <!-- Actions -->
+        <div class="text-end mt-3">
+          <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-save"></i> Register Vehicle
+          </button>
+          <a hx-get="{% url 'accounts:staff_dashboard' %}"
+             hx-target="#main-content"
+             hx-swap="innerHTML transition:true"
+             class="btn btn-secondary btn-lg">
+            <i class="bi bi-arrow-left-circle"></i> Back to Dashboard
+          </a>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -141,5 +139,4 @@ option {
   background-color: #fff !important;
 }
 </style>
-
 {% endblock %}

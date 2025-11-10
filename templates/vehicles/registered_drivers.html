@@ -1,156 +1,177 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
+
 {% block title %}Registered Drivers | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="row">
-    <!-- Sidebar -->
-    <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
-      {% include 'includes/sidebar.html' %}
-    </div>
+<div class="p-4">
+  <h3 class="mb-3"><i class="bi bi-people"></i> Registered Drivers</h3>
+  <p class="text-muted">View, search, and manage registered drivers in the system.</p>
 
-    <!-- Main Content -->
-    <div class="col-md-9 col-lg-10 p-4">
-      <h3 class="mb-3"><i class="bi bi-people"></i> Registered Drivers</h3>
-      <p class="text-muted">View, search, and manage registered drivers in the system.</p>
+  <!-- Search Form -->
+  <form method="get" class="mb-3 d-flex" role="search">
+    <input
+      type="text"
+      name="q"
+      class="form-control me-2"
+      placeholder="Search driver by name, license number, or contact..."
+      value="{{ request.GET.q }}"
+    />
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-search"></i> Search
+    </button>
+  </form>
 
-      <!-- Search Form -->
-      <form method="get" class="mb-3 d-flex" role="search">
-        <input
-          type="text"
-          name="q"
-          class="form-control me-2"
-          placeholder="Search driver by name, license number, or contact..."
-          value="{{ request.GET.q }}"
-        />
-        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Search</button>
-      </form>
+  <!-- Messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
 
-      <!-- Messages -->
-      {% if messages %}
-          {% for message in messages %}
-              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                  {{ message }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-          {% endfor %}
-      {% endif %}
-
-      <!-- Drivers Table -->
-      <div class="card shadow-sm border-0">
-        <div class="card-body table-responsive">
-          {% if page_obj %}
-            <table class="table table-hover align-middle table-bordered">
-              <thead class="table-light">
-                <tr>
-                  <th>#</th>
-                  <th>Full Name</th>
-                  <th>License No.</th>
-                  <th>Type</th>
-                  <th>Expiry</th>
-                  <th>Contact</th>
-                  <th>Blood Type</th>
-                  <th>Email</th>
-                  <th>Registered</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for driver in page_obj %}
-                <tr>
-                  <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                  <td>{{ driver.first_name }} {{ driver.middle_name|default:"" }} {{ driver.last_name }}</td>
-                  <td>{{ driver.license_number }}</td>
-                  <td>{{ driver.license_type }}</td>
-                  <td>
-                    {% if driver.license_expiry %}
-                      {{ driver.license_expiry|date:"M d, Y" }}
-                    {% else %}
-                      <span class="text-muted">N/A</span>
-                    {% endif %}
-                  </td>
-                  <td>{{ driver.mobile_number }}</td>
-                  <td>{{ driver.blood_type|default:"N/A" }}</td>
-                  <td>{{ driver.email }}</td>
-                  <td>{{ driver.created_at|date:"M d, Y" }}</td>
-                  <td>
-                    {% if user.is_superuser or user.role == 'admin' %}
-                      <a href="#" 
-                        class="btn btn-danger btn-sm btn-delete-item" 
-                        data-url="{% url 'vehicles:delete_driver' driver.id %}" 
+  <!-- Drivers Table -->
+  <div class="card shadow-sm border-0">
+    <div class="card-body table-responsive">
+      {% if page_obj %}
+      <table class="table table-hover align-middle table-bordered">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Full Name</th>
+            <th>License No.</th>
+            <th>Type</th>
+            <th>Expiry</th>
+            <th>Contact</th>
+            <th>Blood Type</th>
+            <th>Email</th>
+            <th>Registered</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for driver in page_obj %}
+          <tr>
+            <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
+            <td>{{ driver.first_name }} {{ driver.middle_name|default:"" }} {{ driver.last_name }}</td>
+            <td>{{ driver.license_number }}</td>
+            <td>{{ driver.license_type }}</td>
+            <td>
+              {% if driver.license_expiry %}
+                {{ driver.license_expiry|date:"M d, Y" }}
+              {% else %}
+                <span class="text-muted">N/A</span>
+              {% endif %}
+            </td>
+            <td>{{ driver.mobile_number }}</td>
+            <td>{{ driver.blood_type|default:"N/A" }}</td>
+            <td>{{ driver.email }}</td>
+            <td>{{ driver.created_at|date:"M d, Y" }}</td>
+            <td>
+              {% if user.is_superuser or user.role == 'admin' %}
+                <button class="btn btn-danger btn-sm btn-delete-item"
+                        data-url="{% url 'vehicles:delete_driver' driver.id %}"
                         data-type="Driver">
-                        <i class="bi bi-trash"></i> Delete
-                      </a>
-                    {% else %}
-                      <span class="text-muted">No Action</span>
-                    {% endif %}
-                  </td>
-                </tr>
-                {% empty %}
-                <tr>
-                  <td colspan="10" class="text-center text-muted py-3">
-                    No drivers found.
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          {% else %}
-            <p class="text-center text-muted">No drivers registered yet.</p>
-          {% endif %}
-        </div>
-
-        <!-- Pagination -->
-        {% if page_obj.has_other_pages %}
-        <div class="card-footer bg-light d-flex justify-content-between align-items-center">
-          <div>
-            Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} drivers
-          </div>
-          <nav>
-            <ul class="pagination mb-0">
-              {% if page_obj.has_previous %}
-                <li class="page-item">
-                  <a class="page-link" href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">
-                    &laquo; Prev
-                  </a>
-                </li>
+                  <i class="bi bi-trash"></i> Delete
+                </button>
               {% else %}
-                <li class="page-item disabled"><span class="page-link">&laquo; Prev</span></li>
+                <span class="text-muted">No Action</span>
               {% endif %}
-
-              {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}
-                  <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
-                  <li class="page-item">
-                    <a class="page-link" href="?q={{ request.GET.q }}&page={{ num }}">{{ num }}</a>
-                  </li>
-                {% endif %}
-              {% endfor %}
-
-              {% if page_obj.has_next %}
-                <li class="page-item">
-                  <a class="page-link" href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">
-                    Next &raquo;
-                  </a>
-                </li>
-              {% else %}
-                <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
-              {% endif %}
-            </ul>
-          </nav>
-        </div>
-        {% endif %}
-      </div>
-
-      <!-- Back Button -->
-      <div class="mt-3 text-end">
-        <a href="{% url 'staff_dashboard' %}" class="btn btn-secondary btn-lg">
-          <i class="bi bi-arrow-left"></i> Back to Dashboard
-        </a>
-      </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="text-center text-muted py-3">No drivers found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-center text-muted">No drivers registered yet.</p>
+      {% endif %}
     </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+      <div>
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} drivers
+      </div>
+      <nav>
+        <ul class="pagination mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">
+                &laquo; Prev
+              </a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo; Prev</span></li>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:-3 and num < page_obj.number|add:3 %}
+              <li class="page-item">
+                <a class="page-link" href="?q={{ request.GET.q }}&page={{ num }}">{{ num }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">
+                Next &raquo;
+              </a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Back Button -->
+  <div class="mt-3 text-end">
+    <a hx-get="{% url 'accounts:staff_dashboard' %}" 
+       hx-target="#main-content" 
+       hx-swap="innerHTML transition:true"
+       class="btn btn-secondary btn-lg">
+      <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
   </div>
 </div>
+
+<!-- Delete Driver Script -->
+<script>
+document.querySelectorAll('.btn-delete-item').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const url = this.dataset.url;
+    const type = this.dataset.type || 'Item';
+    if (confirm(`Are you sure you want to delete this ${type}?`)) {
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(`${type} deleted successfully.`);
+          location.reload();
+        } else {
+          alert('❌ Failed to delete ' + type);
+        }
+      })
+      .catch(() => alert('❌ Error deleting ' + type));
+    }
+  });
+});
+</script>
 {% endblock %}

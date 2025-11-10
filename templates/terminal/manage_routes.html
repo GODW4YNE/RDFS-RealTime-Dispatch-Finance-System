@@ -3,132 +3,122 @@
 {% block title %}Manage Routes | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="row">
-    <!-- Sidebar -->
-    <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
-      {% include 'includes/sidebar.html' %}
-    </div>
+<div class="container-fluid p-4">
+  <h3 class="mb-3"><i class="bi bi-signpost-2"></i> Manage Routes</h3>
+  <p class="text-muted">Add, update, or remove available routes in the terminal.</p>
 
-    <!-- Main Content -->
-    <div class="col-md-9 col-lg-10 p-4">
-      <h3 class="mb-3"><i class="bi bi-signpost-2"></i> Manage Routes</h3>
-      <p class="text-muted">Add, update, or remove available routes in the terminal.</p>
-
-      <!-- Flash Messages -->
-      {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
-      {% endif %}
-
-      <!-- Route Management Card -->
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-          <form method="POST" id="routeForm" novalidate>
-            {% csrf_token %}
-            <input type="hidden" name="action" value="add" id="formAction">
-            <input type="hidden" name="route_id" id="routeId">
-
-            <div class="row g-3">
-              <div class="col-md-4">
-                <label class="form-label fw-bold">Origin <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="origin" id="origin" placeholder="e.g. Maasin" required>
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label fw-bold">Destination <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="destination" id="destination" placeholder="e.g. Sogod" required>
-              </div>
-
-              <div class="col-md-3">
-                <label class="form-label fw-bold">Base Fare (₱)</label>
-                <input type="number" class="form-control" name="base_fare" id="baseFare" min="0" step="0.01" placeholder="Optional">
-              </div>
-
-              <div class="col-md-1 d-flex align-items-end">
-                <div class="form-check">
-                  <input type="checkbox" class="form-check-input" name="active" id="active" checked>
-                  <label class="form-check-label fw-bold" for="active">Active</label>
-                </div>
-              </div>
-            </div>
-
-            <div class="text-end mt-3">
-              <button type="submit" class="btn btn-primary" id="saveBtn">
-                <i class="bi bi-plus-circle"></i> Add Route
-              </button>
-              <button type="button" class="btn btn-secondary d-none" id="cancelEditBtn">
-                <i class="bi bi-x-circle"></i> Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+  <!-- Flash Messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
+    {% endfor %}
+  {% endif %}
 
-      <!-- Routes Table -->
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <h5 class="card-title mb-3">Existing Routes</h5>
+  <!-- Route Management Card -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <form method="POST" id="routeForm" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add" id="formAction">
+        <input type="hidden" name="route_id" id="routeId">
 
-          {% if routes %}
-          <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th>#</th>
-                  <th>Origin</th>
-                  <th>Destination</th>
-                  <th>Base Fare</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for route in routes %}
-                <tr>
-                  <td>{{ forloop.counter }}</td>
-                  <td>{{ route.origin }}</td>
-                  <td>{{ route.destination }}</td>
-                  <td>₱{{ route.base_fare }}</td>
-                  <td>
-                    {% if route.active %}
-                      <span class="badge bg-success">Active</span>
-                    {% else %}
-                      <span class="badge bg-secondary">Inactive</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <button class="btn btn-sm btn-outline-primary editBtn"
-                            data-id="{{ route.id }}"
-                            data-origin="{{ route.origin }}"
-                            data-destination="{{ route.destination }}"
-                            data-fare="{{ route.base_fare }}"
-                            data-active="{{ route.active }}">
-                      <i class="bi bi-pencil"></i> Edit
-                    </button>
-                    <form method="POST" class="d-inline">
-                      {% csrf_token %}
-                      <input type="hidden" name="action" value="delete">
-                      <input type="hidden" name="route_id" value="{{ route.id }}">
-                      <button type="submit" class="btn btn-sm btn-outline-danger deleteBtn">
-                        <i class="bi bi-trash"></i> Delete
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Origin <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="origin" id="origin" placeholder="e.g. Maasin" required>
           </div>
-          {% else %}
-            <p class="text-muted">No routes found. Add one above.</p>
-          {% endif %}
+
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Destination <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="destination" id="destination" placeholder="e.g. Sogod" required>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Base Fare (₱)</label>
+            <input type="number" class="form-control" name="base_fare" id="baseFare" min="0" step="0.01" placeholder="Optional">
+          </div>
+
+          <div class="col-md-1 d-flex align-items-end">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" name="active" id="active" checked>
+              <label class="form-check-label fw-bold" for="active">Active</label>
+            </div>
+          </div>
         </div>
+
+        <div class="text-end mt-3">
+          <button type="submit" class="btn btn-primary" id="saveBtn">
+            <i class="bi bi-plus-circle"></i> Add Route
+          </button>
+          <button type="button" class="btn btn-secondary d-none" id="cancelEditBtn">
+            <i class="bi bi-x-circle"></i> Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Routes Table -->
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Existing Routes</h5>
+
+      {% if routes %}
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Origin</th>
+              <th>Destination</th>
+              <th>Base Fare</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for route in routes %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ route.origin }}</td>
+              <td>{{ route.destination }}</td>
+              <td>₱{{ route.base_fare }}</td>
+              <td>
+                {% if route.active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary editBtn"
+                        data-id="{{ route.id }}"
+                        data-origin="{{ route.origin }}"
+                        data-destination="{{ route.destination }}"
+                        data-fare="{{ route.base_fare }}"
+                        data-active="{{ route.active }}">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <form method="POST" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="route_id" value="{{ route.id }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger deleteBtn">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+      {% else %}
+        <p class="text-muted">No routes found. Add one above.</p>
+      {% endif %}
     </div>
   </div>
 </div>

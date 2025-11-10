@@ -5,8 +5,11 @@
 {% block content %}
 <div class="p-4">
   <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Staff Dashboard</h2>
-  <p class="text-muted">Welcome, <strong>{{ user.username }}</strong>. Here’s your quick overview and actions.</p>
+  <p class="text-muted">
+    Welcome, <strong>{{ user.username }}</strong>. Here’s your quick overview and actions.
+  </p>
 
+  <!-- Summary Cards -->
   <div class="row g-4 mb-4">
     <div class="col-md-4">
       <div class="card shadow-sm border-0 text-center bg-primary text-white">
@@ -39,47 +42,67 @@
     </div>
   </div>
 
+  <!-- Quick Action Cards -->
   <div class="row mt-4 mb-5">
     <div class="col-md-4">
-      <a href="{% url 'vehicles:register_driver' %}" class="text-decoration-none">
+      <a hx-get="{% url 'vehicles:register_driver' %}" 
+         hx-target="#main-content" 
+         hx-swap="innerHTML transition:true"
+         class="text-decoration-none">
         <div class="card border-0 shadow-sm h-100 text-center hover-card">
           <div class="card-body">
             <i class="bi bi-person-plus fs-2 text-primary"></i>
             <h5 class="mt-2">Register Driver</h5>
+            <p class="text-muted small">Add a new driver to the system.</p>
           </div>
         </div>
       </a>
     </div>
 
     <div class="col-md-4">
-      <a href="{% url 'vehicles:register_vehicle' %}" class="text-decoration-none">
+      <a hx-get="{% url 'vehicles:register_vehicle' %}" 
+         hx-target="#main-content" 
+         hx-swap="innerHTML transition:true"
+         class="text-decoration-none">
         <div class="card border-0 shadow-sm h-100 text-center hover-card">
           <div class="card-body">
             <i class="bi bi-truck-front fs-2 text-success"></i>
             <h5 class="mt-2">Register Vehicle</h5>
+            <p class="text-muted small">Assign a new vehicle to a driver.</p>
           </div>
         </div>
       </a>
     </div>
 
     <div class="col-md-4">
-      <a href="{% url 'terminal:deposit_menu' %}" class="text-decoration-none">
+      <a hx-get="{% url 'terminal:deposit_menu' %}" 
+         hx-target="#main-content" 
+         hx-swap="innerHTML transition:true"
+         class="text-decoration-none">
         <div class="card border-0 shadow-sm h-100 text-center hover-card">
           <div class="card-body">
             <i class="bi bi-wallet2 fs-2 text-warning"></i>
             <h5 class="mt-2">Deposit Menu</h5>
+            <p class="text-muted small">Record wallet deposits for vehicles.</p>
           </div>
         </div>
       </a>
     </div>
   </div>
 
+  <!-- Footer Info -->
   <div class="text-end mt-3">
     <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
   </div>
 </div>
 
 <style>
-  .hover-card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.15); }
+  .hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+  }
 </style>
 {% endblock %}

@@ -5,8 +5,9 @@
 {% block content %}
 <div class="p-4">
   <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
-  <p class="text-muted">Welcome back, {{ user.username }}. Here’s a quick overview of terminal activity.</p>
+  <p class="text-muted">Welcome back, <strong>{{ user.username }}</strong>. Here’s a quick overview of terminal activity.</p>
 
+  <!-- Summary Cards -->
   <div class="row g-4 mb-4">
     <div class="col-md-3">
       <div class="card shadow-sm border-0 text-center bg-primary text-white">
@@ -49,6 +50,7 @@
     </div>
   </div>
 
+  <!-- Profit Chart -->
   <div class="card shadow-sm border-0 mb-5">
     <div class="card-body">
       <h5><i class="bi bi-graph-up"></i> Profit Trend (Last 7 Days)</h5>
@@ -56,11 +58,61 @@
     </div>
   </div>
 
+  <!-- Quick Links -->
+  <div class="row mt-4 mb-5">
+    <div class="col-md-4">
+      <a hx-get="{% url 'accounts:manage_users' %}" 
+         hx-target="#main-content" 
+         hx-swap="innerHTML transition:true"
+         class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 text-center hover-card">
+          <div class="card-body">
+            <i class="bi bi-people fs-2 text-primary"></i>
+            <h5 class="mt-2">Manage Accounts</h5>
+            <p class="text-muted small">Add or edit admin and staff accounts.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a hx-get="{% url 'reports:profit_report' %}" 
+         hx-target="#main-content" 
+         hx-swap="innerHTML transition:true"
+         class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 text-center hover-card">
+          <div class="card-body">
+            <i class="bi bi-graph-up-arrow fs-2 text-success"></i>
+            <h5 class="mt-2">View Profit Reports</h5>
+            <p class="text-muted small">See all recorded profits by date.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a hx-get="{% url 'terminal:manage_queue' %}" 
+         hx-target="#main-content" 
+         hx-swap="innerHTML transition:true"
+         class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 text-center hover-card">
+          <div class="card-body">
+            <i class="bi bi-clock-history fs-2 text-warning"></i>
+            <h5 class="mt-2">Manage Queue</h5>
+            <p class="text-muted small">View and adjust vehicle queue order.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Footer Info -->
   <div class="text-end">
     <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
   </div>
 </div>
 
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -70,10 +122,35 @@ document.addEventListener("DOMContentLoaded", function() {
     type: "line",
     data: {
       labels: {{ chart_labels|safe }},
-      datasets: [{ label: "Profit (₱)", data: {{ chart_data|safe }}, borderColor: "#007bff", backgroundColor: "rgba(0,123,255,0.15)", fill:true, tension:0.4 }]
+      datasets: [{
+        label: "Profit (₱)",
+        data: {{ chart_data|safe }},
+        borderColor: "#007bff",
+        backgroundColor: "rgba(0, 123, 255, 0.2)",
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2
+      }]
     },
-    options: { scales: { y: { beginAtZero:true } } }
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => "₱" + ctx.formattedValue } }
+      }
+    }
   });
 });
 </script>
+
+<style>
+  .hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+  }
+</style>
 {% endblock %}

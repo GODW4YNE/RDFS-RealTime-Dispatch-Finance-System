@@ -11,91 +11,106 @@ from django.utils import timezone
 import csv
 from datetime import timedelta
 from accounts.utils import is_staff_admin_or_admin, is_admin   # ✅ imported shared role checks
+from pytz import timezone as pytz_timezone
 
-
-# ===============================
-#   DEPOSIT MENU (Role-based)
-# ===============================
+# ---- Deposit menu (unchanged) ----
+@login_required(login_url='login')
+@user_passes_test(is_staff_admin_or_admin)
+@never_cache
 def deposit_menu(request):
     settings = SystemSettings.get_solo()
     min_deposit = settings.min_deposit_amount
     user = request.user
-
     deposits = Deposit.objects.select_related('wallet__vehicle__assigned_driver').order_by('-created_at')
 
     if user.role == "admin":
         start_date = request.GET.get("start_date", "")
         end_date = request.GET.get("end_date", "")
         vehicle_plate = request.GET.get("vehicle_plate", "")
-
         if start_date:
             deposits = deposits.filter(created_at__date__gte=start_date)
         if end_date:
             deposits = deposits.filter(created_at__date__lte=end_date)
         if vehicle_plate:
             deposits = deposits.filter(wallet__vehicle__license_plate__icontains=vehicle_plate)
-
-        context = {
-            "role": "admin",
-            "deposits": deposits[:200],
-            "start_date": start_date,
-            "end_date": end_date,
-            "vehicle_plate": vehicle_plate,
-            "min_deposit": min_deposit,
-        }
+        context = {"role":"admin","deposits":deposits[:200],"start_date":start_date,"end_date":end_date,"vehicle_plate":vehicle_plate,"min_deposit":min_deposit}
         return render(request, "terminal/deposit_menu.html", context)
 
-    drivers_with_vehicles = (
-        Driver.objects.filter(vehicles__isnull=False)
-        .distinct()
-        .order_by('last_name', 'first_name')
-    )
-
+    drivers_with_vehicles = Driver.objects.filter(vehicles__isnull=False).distinct().order_by('last_name','first_name')
     recent_deposits = deposits[:10]
-
     if request.method == "POST":
         vehicle_id = request.POST.get("vehicle_id")
         amount_str = request.POST.get("amount", "").strip()
-
         if not vehicle_id or not amount_str:
             messages.error(request, "⚠️ Please fill in all required fields.")
             return redirect('terminal:deposit_menu')
-
         try:
             amount = Decimal(amount_str)
         except:
             messages.error(request, "❌ Invalid deposit amount.")
             return redirect('terminal:deposit_menu')
-
         if amount <= 0:
             messages.error(request, "⚠️ Deposit amount must be greater than zero.")
             return redirect('terminal:deposit_menu')
-
         vehicle = Vehicle.objects.filter(id=vehicle_id).first()
         if not vehicle:
             messages.error(request, "❌ Vehicle not found.")
             return redirect('terminal:deposit_menu')
-
         wallet, _ = Wallet.objects.get_or_create(vehicle=vehicle)
         Deposit.objects.create(wallet=wallet, amount=amount)
-
         messages.success(request, f"✅ Successfully deposited ₱{amount} to {vehicle.license_plate}.")
         return redirect('terminal:deposit_menu')
 
-    context = {
-        "role": "staff_admin",
-        "drivers": drivers_with_vehicles,
-        "recent_deposits": recent_deposits,
-        "context_message": "" if drivers_with_vehicles.exists() else
-            "No registered drivers with vehicles found. Please register a vehicle first.",
-        "min_deposit": min_deposit,
-    }
+    context = {"role":"staff_admin","drivers":drivers_with_vehicles,"recent_deposits":recent_deposits,"context_message":"" if drivers_with_vehicles.exists() else "No registered drivers with vehicles found. Please register a vehicle first.","min_deposit":min_deposit}
     return render(request, "terminal/deposit_menu.html", context)
 
 
+# ===============================
+#   TERMINAL QUEUE PAGE WRAPPER
+# ===============================
+@login_required(login_url='login')
+@user_passes_test(is_staff_admin_or_admin)
+@never_cache
+def terminal_queue(request):
+    """Render the main terminal queue page (the page which will poll queue-data)."""
+    return render(request, "terminal/terminal_queue.html")
+
 
 # ===============================
-#   QUEUE & SIMPLE QUEUE
+#   QUEUE DATA (AJAX endpoint)
+# ===============================
+@login_required(login_url='login')
+@user_passes_test(is_staff_admin_or_admin)
+@never_cache
+def queue_data(request):
+    """AJAX endpoint for live queue refresh."""
+    logs = (
+        EntryLog.objects.filter(status=EntryLog.STATUS_SUCCESS, is_active=True)
+        .select_related("vehicle__assigned_driver", "staff")
+        .order_by("-created_at")[:20]
+    )
+
+    ph_tz = pytz_timezone("Asia/Manila")
+    data = []
+    for log in logs:
+        v = log.vehicle
+        d = v.assigned_driver if v else None
+        # convert created_at to local time for display
+        entry_local = timezone.localtime(log.created_at, ph_tz)
+        data.append({
+            "id": log.id,
+            "vehicle_plate": getattr(v, "license_plate", "N/A") if v else "—",
+            "vehicle_name": getattr(v, "vehicle_name", "—") if v else "—",
+            "driver_name": f"{d.first_name} {d.last_name}" if d else "—",
+            "fee": float(log.fee_charged),
+            "staff": log.staff.username if log.staff else "—",
+            "time": entry_local.strftime("%Y-%m-%d %I:%M %p"),
+        })
+    return JsonResponse({"entries": data})
+
+
+# ===============================
+#   SIMPLE QUEUE (TV)
 # ===============================
 @login_required(login_url='login')
 @user_passes_test(is_staff_admin_or_admin)
@@ -103,77 +118,48 @@ def deposit_menu(request):
 def simple_queue_view(request):
     settings = SystemSettings.get_solo()
     duration = getattr(settings, "departure_duration_minutes", 30)
-    logs = (
-        EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS)
-        .select_related("vehicle__assigned_driver")
-        .order_by("-created_at")
-    )
-
-    queue = []
+    logs = EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS).select_related("vehicle__assigned_driver").order_by("-created_at")
     ph_tz = pytz_timezone("Asia/Manila")
-
+    queue = []
     for log in logs:
         v = log.vehicle
         d = v.assigned_driver if v else None
         departure_time = log.created_at + timedelta(minutes=duration)
-
-        entry_time = timezone.localtime(log.created_at, ph_tz)
-        departure_time = timezone.localtime(departure_time, ph_tz)
-
         queue.append({
             "plate": getattr(v, "license_plate", "N/A"),
             "driver": f"{d.first_name} {d.last_name}" if d else "N/A",
-            "entry_time": entry_time.strftime("%I:%M %p"),
-            "departure_time": departure_time.strftime("%I:%M %p"),
+            "entry_time": timezone.localtime(log.created_at, ph_tz).strftime("%I:%M %p"),
+            "departure_time": timezone.localtime(departure_time, ph_tz).strftime("%I:%M %p"),
         })
-
-    context = {
-        "queue": queue,
-        "stay_duration": duration,
-        "now": timezone.localtime(timezone.now(), ph_tz)
-    }
+    context = {"queue": queue, "stay_duration": duration, "now": timezone.localtime(timezone.now(), ph_tz)}
     return render(request, "terminal/simple_queue.html", context)
 
 
+# ===============================
+#   MANAGE QUEUE
+# ===============================
 @login_required(login_url='login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def manage_queue(request):
     settings = SystemSettings.get_solo()
     duration = getattr(settings, "departure_duration_minutes", 30)
-    logs = (
-        EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS)
-        .select_related("vehicle__assigned_driver", "staff")
-        .order_by("-created_at")
-    )
-
+    logs = EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS).select_related("vehicle__assigned_driver","staff").order_by("-created_at")
     ph_tz = pytz_timezone("Asia/Manila")
     queue = []
-
     for log in logs:
         v = log.vehicle
         d = v.assigned_driver if v else None
         departure_time = log.created_at + timedelta(minutes=duration)
-
-        entry_time = timezone.localtime(log.created_at, ph_tz)
-        departure_time = timezone.localtime(departure_time, ph_tz)
-
         queue.append({
             "id": log.id,
             "plate": getattr(v, "license_plate", "N/A"),
             "driver": f"{d.first_name} {d.last_name}" if d else "N/A",
-            "entry_time": entry_time.strftime("%I:%M %p"),
-            "departure_time": departure_time.strftime("%I:%M %p"),
+            "entry_time": timezone.localtime(log.created_at, ph_tz).strftime("%I:%M %p"),
+            "departure_time": timezone.localtime(departure_time, ph_tz).strftime("%I:%M %p"),
             "staff": log.staff.username if log.staff else "—",
         })
-
-    context = {
-        "queue": queue,
-        "stay_duration": duration,
-        "now": timezone.localtime(timezone.now(), ph_tz)
-    }
-    return render(request, "terminal/manage_queue.html", context)
-
+    return render(request, "terminal/manage_queue.html", {"queue": queue, "stay_duration": duration})
 
 # ===============================
 #   QR ENTRY / EXIT

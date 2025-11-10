@@ -1,17 +1,20 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block title %}Terminal Queue | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="p-4">
   <div class="card shadow-sm border-0">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <div>
-        <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Terminal Queue</h5>
+        <h5 class="mb-0"><i class="bi bi-list-check me-2"></i> Terminal Queue</h5>
         <small class="text-light opacity-75">Live overview of active vehicles inside the terminal</small>
       </div>
-      <a href="{% url 'terminal:qr_scan_entry' %}" class="btn btn-light btn-sm">
+      <a hx-get="{% url 'terminal:qr_scan_entry' %}" 
+         hx-target="#main-content" 
+         hx-swap="innerHTML transition:true"
+         class="btn btn-light btn-sm">
         <i class="bi bi-qr-code-scan me-1"></i> QR Scan Entry
       </a>
     </div>
@@ -37,7 +40,7 @@
               <th>Fee Charged</th>
               <th>Validated By</th>
               <th>Entry Time</th>
-              <th>Actions</th> <!-- 🆕 Added -->
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="queue-body">
@@ -51,6 +54,16 @@
         <i class="bi bi-info-circle me-1"></i> No vehicles currently in queue.
       </div>
     </div>
+  </div>
+
+  <!-- Back Button -->
+  <div class="text-end mt-4">
+    <a hx-get="{% url 'accounts:staff_dashboard' %}"
+       hx-target="#main-content"
+       hx-swap="innerHTML transition:true"
+       class="btn btn-secondary btn-lg">
+      <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
   </div>
 </div>
 
@@ -112,7 +125,6 @@ async function markDeparted(entryId) {
     const data = await response.json();
 
     if (data.success) {
-      // remove row instantly
       const row = document.getElementById(`row-${entryId}`);
       if (row) row.remove();
       alert(data.message);
