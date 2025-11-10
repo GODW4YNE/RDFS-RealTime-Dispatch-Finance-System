@@ -17,6 +17,9 @@ urlpatterns = [
     path('terminal/', include(('terminal.urls', 'terminal'), namespace='terminal')),
     path('reports/', include(('reports.urls', 'reports'), namespace='reports')),
 
+    #Passenger app
+    path('passenger/', include('passenger.urls')),
+
     # ✅ Explicit dashboard shortcuts (still work fine)
     path('dashboard/admin/', accounts_views.admin_dashboard_view, name='admin_dashboard'),
     path('dashboard/staff/', accounts_views.staff_dashboard_view, name='staff_dashboard'),

@@ -1,8 +1,16 @@
 import os
 from pathlib import Path
+import environ
 
 # --- Base Directory ---
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Initialize environment variables
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
 
 # --- Security ---
 SECRET_KEY = 'replace-this-with-your-own-secret-key'
@@ -65,10 +73,15 @@ WSGI_APPLICATION = 'TicketNow.wsgi.application'
 # --- Database ---
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
     }
 }
+
 
 # --- Password Validation ---
 AUTH_PASSWORD_VALIDATORS = []
