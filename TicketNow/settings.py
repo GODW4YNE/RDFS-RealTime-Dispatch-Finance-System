@@ -15,14 +15,20 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # Load .env for local dev
 SECRET_KEY = env('SECRET_KEY', default='replace-this-with-your-own-secret-key')
 DEBUG = env.bool('DEBUG', default=True)
 
-# Allow list from env; fall back to '*' only when running on Render
-_raw_allowed = env('ALLOWED_HOSTS', default=None)
-if _raw_allowed:
-    # env.list will turn "a,b,c" -> ['a','b','c']
-    ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
-else:
-    # If no ALLOWED_HOSTS defined, be permissive on Render (temporary)
-    ALLOWED_HOSTS = ['*']
+# --- Allowed Hosts (Render-safe) ---
+# Always include your Render domain and local dev hosts to prevent DisallowedHost errors.
+ALLOWED_HOSTS = [
+    'ticketnow-wkrf.onrender.com',  # your Render public URL
+    '127.0.0.1',
+    'localhost',
+]
+
+# If you still want to allow dynamic loading from environment for future flexibility:
+extra_hosts = env.list('ALLOWED_HOSTS', default=[])
+for host in extra_hosts:
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
+
 
 
 # --- Installed Apps ---
