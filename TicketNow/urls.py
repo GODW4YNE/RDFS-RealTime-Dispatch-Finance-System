@@ -3,24 +3,25 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from accounts import views as accounts_views
+from django.shortcuts import redirect
 
 urlpatterns = [
-    # ✅ Default route: always goes to login page
-    path('', accounts_views.login_view, name='login'),
+    # ✅ Default route: redirect to Passenger Public Page (public landing for now)
+    path('', lambda request: redirect('passenger:public_queue')),
 
-    # ✅ Django admin site
-    path('admin/', admin.site.urls),
+    # 🔒 Hidden Django admin site (only accessible to authorized people)
+    path('super-secret-admin/', admin.site.urls),
 
-    # ✅ Include all app routes with namespaces
+    # ✅ Include all app routes
     path('accounts/', include(('accounts.urls', 'accounts'), namespace='accounts')),
     path('vehicles/', include(('vehicles.urls', 'vehicles'), namespace='vehicles')),
     path('terminal/', include(('terminal.urls', 'terminal'), namespace='terminal')),
     path('reports/', include(('reports.urls', 'reports'), namespace='reports')),
 
-    #Passenger app
-    path('passenger/', include('passenger.urls')),
+    # ✅ Passenger app (public access)
+    path('passenger/', include(('passenger.urls', 'passenger'), namespace='passenger')),
 
-    # ✅ Explicit dashboard shortcuts (still work fine)
+    # ✅ Explicit dashboard shortcuts (still fine for logged-in users)
     path('dashboard/admin/', accounts_views.admin_dashboard_view, name='admin_dashboard'),
     path('dashboard/staff/', accounts_views.staff_dashboard_view, name='staff_dashboard'),
 ]

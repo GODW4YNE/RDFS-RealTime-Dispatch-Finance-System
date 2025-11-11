@@ -151,7 +151,7 @@ def delete_user(request, user_id):
 # ===============================
 # ✅ ADMIN DASHBOARD
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='/accounts/terminal-access/')
 @user_passes_test(is_admin)
 @never_cache
 def admin_dashboard_view(request):
@@ -191,7 +191,7 @@ def admin_dashboard_view(request):
 # ===============================
 # ✅ STAFF DASHBOARD
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='/accounts/terminal-access/')
 @user_passes_test(is_staff_admin)
 @never_cache
 def staff_dashboard_view(request):

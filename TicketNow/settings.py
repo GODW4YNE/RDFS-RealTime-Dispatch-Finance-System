@@ -104,16 +104,21 @@ MEDIA_ROOT = BASE_DIR / "media"
 # --- Default Primary Key Field Type ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# --- Custom User Model ---
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-LOGIN_URL = '/'
+# --- Authentication Redirects ---
+# Ensures all unauthorized users are redirected properly
+LOGIN_URL = '/accounts/terminal-access/'  # absolute path works safely
+LOGIN_REDIRECT_URL = '/dashboard/staff/'
+LOGOUT_REDIRECT_URL = '/passenger/public_queue/'
 
 
-# 🔐 Session and Security Settings
+# --- Session and Security Settings ---
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 900  # 15 minutes (auto logout after inactivity)
-SESSION_SAVE_EVERY_REQUEST = True  # Refresh session on activity
+SESSION_SAVE_EVERY_REQUEST = True  # refresh session on activity
 
-CSRF_COOKIE_SECURE = False  # Set True if HTTPS
-SESSION_COOKIE_SECURE = False  # Set True if HTTPS
-
+# --- Security (set to True if using HTTPS on Render) ---
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
