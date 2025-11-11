@@ -9,13 +9,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False)
 )
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
-
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # Load .env for local dev
 
 # --- Security ---
-SECRET_KEY = 'replace-this-with-your-own-secret-key'
-DEBUG = True
-ALLOWED_HOSTS = []
+SECRET_KEY = env('SECRET_KEY', default='replace-this-with-your-own-secret-key')
+DEBUG = env('DEBUG', default=True)
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 # --- Installed Apps ---
 INSTALLED_APPS = [
@@ -71,17 +70,22 @@ TEMPLATES = [
 WSGI_APPLICATION = 'TicketNow.wsgi.application'
 
 # --- Database ---
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
+# Works both locally (.env) and on Render (DATABASE_URL)
+if env('DATABASE_URL', default=None):
+    DATABASES = {
+        'default': env.db(),  # automatically parses DATABASE_URL
     }
-}
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('DB_NAME', default='ticketnow_db'),
+            'USER': env('DB_USER', default='ticketnow_user'),
+            'PASSWORD': env('DB_PASSWORD', default='ticketnow123'),
+            'HOST': env('DB_HOST', default='localhost'),
+            'PORT': env('DB_PORT', default='5432'),
+        }
+    }
 
 # --- Password Validation ---
 AUTH_PASSWORD_VALIDATORS = []
@@ -97,7 +101,7 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# --- Media Files (Uploads: License photos, QR codes, etc.) ---
+# --- Media Files ---
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -108,17 +112,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 # --- Authentication Redirects ---
-# Ensures all unauthorized users are redirected properly
-LOGIN_URL = '/accounts/terminal-access/'  # absolute path works safely
+LOGIN_URL = '/accounts/terminal-access/'
 LOGIN_REDIRECT_URL = '/dashboard/staff/'
 LOGOUT_REDIRECT_URL = '/passenger/public_queue/'
 
-
 # --- Session and Security Settings ---
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_AGE = 900  # 15 minutes (auto logout after inactivity)
-SESSION_SAVE_EVERY_REQUEST = True  # refresh session on activity
+SESSION_COOKIE_AGE = 900  # 15 minutes (auto logout)
+SESSION_SAVE_EVERY_REQUEST = True
 
-# --- Security (set to True if using HTTPS on Render) ---
+# --- Security (toggle True when using HTTPS on Render) ---
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
