@@ -19,5 +19,6 @@ urlpatterns = [
     path('update-departure/<int:entry_id>/', views.update_departure_time, name='update_departure_time'),
     path('ajax-add-deposit/', views.ajax_add_deposit, name='ajax_add_deposit'),
     path('ajax-get-wallet-balance/', views.ajax_get_wallet_balance, name='ajax_get_wallet_balance'),
+    path('tv-display/', views.tv_display_view, name='tv_display'),
 
 ]

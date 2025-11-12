@@ -4,77 +4,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Passenger View | TicketNow</title>
+  <title>Passenger Queue | TicketNow</title>
   <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    body {
-      background: #f7f9fc;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .hero {
-      background: linear-gradient(135deg, #0d6efd, #6610f2);
-      color: white;
-      padding: 2rem 1rem;
-      border-radius: 0 0 1rem 1rem;
-      text-align: center;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    }
-    .hero h3 { font-weight: 700; }
-    .card { border-radius: 0.75rem; overflow: hidden; }
-    .route-pill {
-      background: #e7f1ff;
-      color: #0d6efd;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 50rem;
-      font-size: 0.85rem;
-    }
-    .refresh-note {
-      font-size: 0.9rem;
-      color: #6c757d;
-      text-align: center;
-    }
-    .countdown {
-      font-weight: 600;
-      color: #dc3545;
-      transition: color 0.3s ease;
-    }
-    .progress {
-      height: 8px;
-      border-radius: 10px;
-      margin-top: 4px;
-      background-color: #e9ecef;
-      overflow: hidden;
-    }
+    body { background: #f7f9fc; font-family: 'Segoe UI', sans-serif; }
+    .hero { background: linear-gradient(135deg,#0d6efd,#6610f2); color: white; padding: 1.8rem; border-radius:0 0 12px 12px; text-align:center; }
+    .route-pill { background:#e7f1ff; color:#0d6efd; font-weight:600; padding:4px 10px; border-radius:999px; font-size:.85rem; }
+    .countdown { font-weight:700; }
+    .progress { height: 10px; border-radius: 12px; background:#e9ecef; overflow:hidden; }
     .progress-bar {
-      transition: width 10s linear, background-color 0.5s ease;
+      width:0%;
+      height:100%;
+      transition: width 1s linear, background-color 0.4s ease;
       will-change: width, background-color;
     }
-    .progress-bar.glow {
-      box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
-    }
-    @media (max-width: 768px) {
-      table { display: none; }
-      .vehicle-card { display: block; }
-    }
-    @media (min-width: 769px) {
-      .vehicle-card { display: none; }
-    }
+    .progress-bar.glow { box-shadow: 0 0 10px rgba(220,53,69,0.6); }
+    .vehicle-card { border-radius:.8rem; }
+    .departed-row { opacity: 0.55; background: #f8f9fa; }
+    .departed-label { color:#6c757d; font-weight:700; }
+    .countdown-small { font-size:0.95rem; }
+    /* Progress color states */
+    .progress-blue { background: linear-gradient(90deg,#0d6efd,#0b5ed7); }
+    .progress-orange { background: linear-gradient(90deg,#fd7e14,#f76707); }
+    .progress-red { background: linear-gradient(90deg,#dc3545,#b02a37); box-shadow: 0 0 8px rgba(220,53,69,0.45); }
   </style>
 </head>
 <body>
 
-<!-- 🟦 Hero Header -->
 <div class="hero mb-4">
-  <h3 class="mb-2"><i class="bi bi-bus-front-fill"></i> Terminal Vehicle Schedule</h3>
-  <p class="mb-0">Check live departures and available routes below.</p>
+  <h3 class="mb-1"><i class="bi bi-bus-front-fill"></i> Terminal Vehicle Schedule</h3>
+  <p class="mb-0">Live departures — follow the status and the countdown.</p>
 </div>
 
 <div class="container pb-4">
-
-  <!-- 🟧 Filter Section -->
   <form method="get" class="row g-3 justify-content-center mb-4">
     <div class="col-md-4 col-sm-8">
       <select name="route" class="form-select shadow-sm" onchange="this.form.submit()">
@@ -88,7 +52,6 @@
     </div>
   </form>
 
-  <!-- 🟩 Vehicle Table (Desktop View) -->
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-body table-responsive">
       {% if queue_entries %}
@@ -106,11 +69,12 @@
         </thead>
         <tbody>
           {% for q in queue_entries %}
-          <tr>
+          <tr id="row-{{ q.id }}" class="{% if not q.is_active and q.recently_departed %}departed-row{% endif %}">
             <td>{{ forloop.counter }}</td>
             <td><strong>{{ q.vehicle.license_plate }}</strong></td>
-            <td><span class="route-pill">{{ q.vehicle.route.origin }} → {{ q.vehicle.route.destination }}</span></td>
-            <td>{{ q.vehicle.assigned_driver.first_name }} {{ q.vehicle.assigned_driver.last_name }}</td>
+            <td><span class="route-pill">{{ q.route }}</span></td>
+            <td>{{ q.driver.first_name }} {{ q.driver.last_name }}</td>
+
             <td>
               {% if q.is_active %}
                 <span class="badge bg-success">Boarding</span>
@@ -118,21 +82,33 @@
                 <span class="badge bg-secondary">Departed</span>
               {% endif %}
             </td>
+
             <td>
-              {% if q.departed_at %}
-                {{ q.departed_at|date:"M d, Y h:i A" }}
-              {% else %}
-                <em class="text-muted">Pending</em>
-              {% endif %}
+              {{ q.departure_time|date:"M d, Y h:i A" }}
             </td>
-            <td>
-              {% if q.departed_at %}
-                <span class="countdown" data-departure="{{ q.departed_at|date:'Y-m-d H:i:s' }}"></span>
-                <div class="progress">
-                  <div class="progress-bar" role="progressbar" style="width: 0%;" data-departure="{{ q.departed_at|date:'Y-m-d H:i:s' }}"></div>
+
+            <td class="text-start" style="min-width:220px;">
+              {# We pass departure_time in ISO for JS to parse #}
+              {% if departure_duration_minutes|default:30 >= 15 %}
+                <div class="d-flex flex-column">
+                  <div class="d-flex justify-content-between mb-1">
+                    <div class="countdown-small">
+                      <span class="countdown" data-departure="{{ q.departure_time|date:'Y-m-d H:i:s' }}"></span>
+                    </div>
+                    <div class="small text-muted">
+                      <span class="countdown-label" data-departure="{{ q.departure_time|date:'Y-m-d H:i:s' }}"></span>
+                    </div>
+                  </div>
+                  <div class="progress">
+                    <div class="progress-bar" role="progressbar"
+                         style="width:0%"
+                         data-departure="{{ q.departure_time|date:'Y-m-d H:i:s' }}"
+                         aria-valuemin="0"
+                         aria-valuemax="100"></div>
+                  </div>
                 </div>
               {% else %}
-                <em class="text-muted">—</em>
+                <div class="small text-muted">Boarding soon</div>
               {% endif %}
             </td>
           </tr>
@@ -145,185 +121,118 @@
     </div>
   </div>
 
-  <!-- 🟨 Mobile View Cards -->
-  {% for q in queue_entries %}
-  <div class="vehicle-card card shadow-sm mb-3">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0"><i class="bi bi-truck"></i> {{ q.vehicle.license_plate }}</h5>
-        {% if q.is_active %}
-          <span class="badge bg-success">Boarding</span>
-        {% else %}
-          <span class="badge bg-secondary">Departed</span>
-        {% endif %}
-      </div>
-      <p class="mb-1 text-muted small">
-        <i class="bi bi-signpost-split"></i>
-        {{ q.vehicle.route.origin }} → {{ q.vehicle.route.destination }}
-      </p>
-      <p class="mb-1 text-muted small">
-        <i class="bi bi-person-badge"></i>
-        {{ q.vehicle.assigned_driver.first_name }} {{ q.vehicle.assigned_driver.last_name }}
-      </p>
-      <p class="mb-1 text-muted small">
-        <i class="bi bi-clock"></i>
-        {% if q.departed_at %}
-          {{ q.departed_at|date:"M d, Y h:i A" }}
-        {% else %}
-          <em>Pending</em>
-        {% endif %}
-      </p>
-      {% if q.departed_at %}
-      <p class="mb-1 text-danger small">
-        <i class="bi bi-hourglass-split"></i>
-        <span class="countdown" data-departure="{{ q.departed_at|date:'Y-m-d H:i:s' }}"></span>
-      </p>
-      <div class="progress">
-        <div class="progress-bar" role="progressbar" style="width: 0%;" data-departure="{{ q.departed_at|date:'Y-m-d H:i:s' }}"></div>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% empty %}
-  <p class="text-center text-muted">No vehicles currently scheduled.</p>
-  {% endfor %}
-
-  <p class="refresh-note mt-4">
-    <i class="bi bi-arrow-repeat"></i> Auto-refreshing every <strong>15 seconds</strong> for live updates
+  <p class="refresh-note mt-4 text-center text-muted">
+    <i class="bi bi-arrow-repeat"></i> Auto-refreshing every 15 seconds for live updates
   </p>
 </div>
 
-<!-- JS -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-function updateCountdowns() {
-  const now = new Date().getTime();
-  const thirtyMin = 30 * 60 * 1000;
+// Client-side timer & progress logic for passenger view
+(function () {
+  const serverNowISO = "{{ server_now|date:'Y-m-d H:i:s' }}";
+  // calibrate client time with server time
+  const serverNow = new Date(serverNowISO.replace(' ', 'T'));
+  const clientNow = new Date();
+  const timeOffset = serverNow.getTime() - clientNow.getTime(); // add to client time to get server time
 
-  document.querySelectorAll('.countdown').forEach(span => {
-    const departureTime = new Date(span.dataset.departure).getTime();
-    const diff = departureTime - now;
-    const bar = span.parentElement.querySelector('.progress-bar');
-    if (!bar) return;
+  const FIFTEEN_MS = 15 * 60 * 1000;
+  const TWO_MIN_MS = 2 * 60 * 1000;
+  const DEPARTED_KEEP_MS = 5 * 60 * 1000;
 
-    if (diff <= 0) {
-      span.textContent = "🚐 Departing now!";
-      bar.style.width = "100%";
-      bar.style.backgroundColor = "#dc3545";
-      bar.classList.add('glow');
-    } else if (diff <= thirtyMin) {
-      const mins = Math.floor(diff / (1000 * 60));
-      span.textContent = `⏳ Leaving in ${mins} min${mins !== 1 ? 's' : ''}`;
-      const progress = 100 - (diff / thirtyMin) * 100;
-      bar.style.width = progress + "%";
-      if (progress < 50) bar.style.backgroundColor = "#0d6efd";
-      else if (progress < 80) bar.style.backgroundColor = "#fd7e14";
-      else {
-        bar.style.backgroundColor = "#dc3545";
-        bar.classList.add('glow');
-      }
-    } else {
-      const mins = Math.floor((diff - thirtyMin) / (1000 * 60));
-      span.textContent = `🕒 Boarding soon (${mins} min later)`;
-      bar.style.width = "0%";
-      bar.style.backgroundColor = "#0d6efd";
-      bar.classList.remove('glow');
-    }
-  });
-}
-
-// 🌀 Simple loading spinner overlay
-function showSpinner() {
-  if (!document.getElementById("loadingSpinner")) {
-    $("body").append(`
-      <div id="loadingSpinner" style="
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(255,255,255,0.7); z-index: 9999; display: flex;
-        justify-content: center; align-items: center; font-size: 1.2rem; color: #0d6efd;
-        font-weight: 600; backdrop-filter: blur(2px);
-      ">
-        <div><i class='bi bi-arrow-repeat spin'></i> Updating schedule...</div>
-      </div>
-    `);
-    $(".spin").css({
-      "animation": "spin 1s linear infinite",
-      "display": "inline-block"
-    });
-    $("<style>@keyframes spin {from {transform: rotate(0deg);} to {transform: rotate(360deg);}}</style>").appendTo("head");
+  function nowMs() {
+    return Date.now() + timeOffset;
   }
-  $("#loadingSpinner").fadeIn(150);
-}
 
-function hideSpinner() {
-  $("#loadingSpinner").fadeOut(300);
-}
+  function formatMinsSecs(ms) {
+    if (ms <= 0) return "Departing now!";
+    const mins = Math.floor(ms / 60000);
+    const secs = Math.floor((ms % 60000) / 1000);
+    if (mins > 0) return `${mins} min${mins !== 1 ? 's' : ''} ${secs}s`;
+    return `${secs}s`;
+  }
 
-// 🔁 Smooth queue refresh (every 15s)
-function refreshQueue() {
-  showSpinner();
-  $.get("/passenger/data/", function(response) {
-    const tbody = $("table tbody");
-    const mobileContainer = $(".vehicle-card").parent();
-    tbody.empty();
-    mobileContainer.find(".vehicle-card").remove();
+  function updateAll() {
+    document.querySelectorAll('.countdown').forEach(span => {
+      const depart = new Date(span.dataset.departure.replace(' ', 'T')).getTime();
+      const diff = depart - nowMs();
 
-    if (response.entries.length === 0) {
-      tbody.append(`<tr><td colspan="7" class="text-center text-muted">No vehicles currently scheduled.</td></tr>`);
-      mobileContainer.append(`<p class="text-center text-muted">No vehicles currently scheduled.</p>`);
-      hideSpinner();
-      return;
-    }
-
-    response.entries.forEach((item, index) => {
-      const countdownHTML = `
-        <span class="countdown" data-departure="${item.departure}"></span>
-        <div class="progress"><div class="progress-bar" role="progressbar" style="width: 0%;" data-departure="${item.departure}"></div></div>
-      `;
-      const row = `
-        <tr>
-          <td>${index + 1}</td>
-          <td><strong>${item.plate}</strong></td>
-          <td><span class="route-pill">${item.route}</span></td>
-          <td>${item.driver}</td>
-          <td><span class="badge ${item.status === 'Boarding' ? 'bg-success' : 'bg-secondary'}">${item.status}</span></td>
-          <td>${new Date(item.departure).toLocaleString()}</td>
-          <td>${countdownHTML}</td>
-        </tr>`;
-      tbody.append(row);
-
-      // Mobile Card
-      const card = `
-        <div class="vehicle-card card shadow-sm mb-3">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="mb-0"><i class="bi bi-truck"></i> ${item.plate}</h5>
-              <span class="badge ${item.status === 'Boarding' ? 'bg-success' : 'bg-secondary'}">${item.status}</span>
-            </div>
-            <p class="mb-1 text-muted small"><i class="bi bi-signpost-split"></i> ${item.route}</p>
-            <p class="mb-1 text-muted small"><i class="bi bi-person-badge"></i> ${item.driver}</p>
-            <p class="mb-1 text-muted small"><i class="bi bi-clock"></i> ${new Date(item.departure).toLocaleString()}</p>
-            <p class="mb-1 text-danger small"><i class="bi bi-hourglass-split"></i>
-              <span class="countdown" data-departure="${item.departure}"></span>
-            </p>
-            <div class="progress"><div class="progress-bar" role="progressbar" style="width: 0%;" data-departure="${item.departure}"></div></div>
-          </div>
-        </div>`;
-      mobileContainer.append(card);
+      // if admin set less than 15 min in view, the progress/countdown hidden by template.
+      if (diff <= 0) {
+        span.textContent = "🚐 Departing now!";
+      } else if (diff > FIFTEEN_MS) {
+        // not yet within the 15 min countdown window
+        span.textContent = "—";
+      } else {
+        // within 15 min window
+        const mins = Math.floor(diff / 60000);
+        span.textContent = `⏳ Leaves in ${mins} min${mins !== 1 ? 's' : ''}`;
+      }
     });
 
-    // Refresh countdowns after updating DOM
-    updateCountdowns();
-    hideSpinner();
-  });
-}
+    // update progress bars (smooth)
+    document.querySelectorAll('.progress-bar').forEach(bar => {
+      const depart = new Date(bar.dataset.departure.replace(' ', 'T')).getTime();
+      const diff = depart - nowMs();
 
-// Initialize countdown loop + first refresh
-updateCountdowns();
-setInterval(updateCountdowns, 5000);
-refreshQueue();
-setInterval(refreshQueue, 15000);
+      if (diff <= 0) {
+        bar.style.width = "100%";
+        bar.classList.remove('progress-blue', 'progress-orange');
+        bar.classList.add('progress-red', 'glow');
+      } else if (diff > FIFTEEN_MS) {
+        // no progress yet
+        bar.style.width = "0%";
+        bar.classList.remove('progress-red', 'progress-orange', 'glow');
+        bar.classList.add('progress-blue');
+      } else {
+        // percent elapsed within 15-minute window
+        const elapsed = FIFTEEN_MS - diff;
+        const pct = Math.min(100, Math.max(0, (elapsed / FIFTEEN_MS) * 100));
+        bar.style.width = pct + "%";
+
+        // color stages
+        if (pct < 50) {
+          bar.classList.remove('progress-orange', 'progress-red', 'glow');
+          bar.classList.add('progress-blue');
+        } else if (pct < 85) {
+          bar.classList.remove('progress-blue', 'progress-red', 'glow');
+          bar.classList.add('progress-orange');
+        } else {
+          bar.classList.remove('progress-blue', 'progress-orange');
+          bar.classList.add('progress-red', 'glow');
+        }
+      }
+    });
+
+    // remove rows that are departed for more than 5 minutes (client-side)
+    document.querySelectorAll('tr[id^="row-"]').forEach(row => {
+      if (row.classList.contains('departed-row')) {
+        // determine when it departed: find departure_time cell text as date string is still available in data attributes
+        const pb = row.querySelector('.progress-bar, .countdown');
+        if (!pb) return; // skip if no data
+        const departAttr = pb.dataset.departure;
+        if (!departAttr) return;
+        const departTime = new Date(departAttr.replace(' ', 'T')).getTime();
+        // we need to find actual departed_at time; we can't get exact departed_at here,
+        // so we remove row if current time is > (departure_time + 5 minutes)
+        if (nowMs() - departTime > (FIFTEEN_MS + DEPARTED_KEEP_MS)) {
+          // beyond expected departure + keep window => remove
+          row.remove();
+        }
+      }
+    });
+  }
+
+  // Initial update + smooth interval every second
+  updateAll();
+  setInterval(updateAll, 1000);
+
+  // Auto refresh the page data every 15s (lighter than full reload — just reload whole page)
+  setInterval(() => {
+    // optimistic partial reload: reload the entire page to fetch server-side changes
+    location.reload();
+  }, 15000);
+})();
 </script>
-
 
 </body>
 </html>

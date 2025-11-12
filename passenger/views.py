@@ -5,61 +5,87 @@ from datetime import timedelta
 from terminal.models import EntryLog, SystemSettings
 from vehicles.models import Vehicle, Route
 from django.http import JsonResponse
+from django.db.models import Q
+
 
 def public_queue_view(request):
     """
-    Passenger Public View
-    - Shows all active and recently departed vehicles (last 10 minutes)
-    - Calculates departure time (entry + waiting time)
-    - Adds route filtering and countdown-ready data
+    Public Passenger View:
+    - Shows active vehicles inside the terminal.
+    - Keeps departed entries visible for 5 minutes (for passengers).
+    - Passes departure_duration_minutes to template.
     """
-    # ✅ System setting for departure duration (default: 30 minutes)
+    # Query param for route filter
+    route_filter = request.GET.get('route')
+
+    # system settings (departure duration controlled by admin)
     settings = SystemSettings.get_solo()
     departure_duration = getattr(settings, "departure_duration_minutes", 30)
 
+    # 5-minute grace window for showing departed entries to passengers
+    keep_departed_for = timedelta(minutes=5)
     now = timezone.now()
-    route_filter = request.GET.get("route", "all")
+    departed_cutoff = now - keep_departed_for
 
-    # ✅ Collect all routes for dropdown filter
-    routes = Route.objects.filter(active=True).order_by("origin", "destination")
-
-    # ✅ Active and recently departed vehicles (keep visible for 10 minutes)
-    ten_mins_ago = now - timedelta(minutes=10)
+    # Base queryset: entries that are active OR departed within last 5 minutes
     queue_entries = (
-        EntryLog.objects.select_related("vehicle", "vehicle__assigned_driver", "vehicle__route")
+        EntryLog.objects.select_related('vehicle', 'vehicle__assigned_driver', 'vehicle__route')
         .filter(
-            status=EntryLog.STATUS_SUCCESS,
-            created_at__gte=ten_mins_ago - timedelta(minutes=departure_duration),  # only recent records
+            # show either active ones or recently departed (within 5 min)
+            (Q(is_active=True) | Q(departed_at__gte=departed_cutoff))
         )
-        .order_by("created_at")
+        .order_by('created_at')
     )
 
-    # ✅ Filter by selected route (if not "all")
-    if route_filter != "all":
-        queue_entries = queue_entries.filter(vehicle__route_id=route_filter)
+    # Optional: filter by route if provided (route id)
+    if route_filter and route_filter != 'all':
+        queue_entries = queue_entries.filter(vehicle__route__id=route_filter)
 
-    # ✅ Process each record: mark boarding/departed and compute departure time
-    enriched_entries = []
-    for q in queue_entries:
-        v = q.vehicle
-        departure_time = q.created_at + timedelta(minutes=departure_duration)
-        is_boarding = q.is_active  # inside terminal
-        is_departed_recently = not q.is_active and q.departed_at and (now - q.departed_at <= timedelta(minutes=10))
+    # Build context items with computed departure_time and flags
+    entries = []
+    for log in queue_entries:
+        v = log.vehicle
+        d = v.assigned_driver if v else None
 
-        if is_boarding or is_departed_recently:
-            enriched_entries.append({
-                "vehicle": v,
-                "is_active": is_boarding,
-                "departed_at": departure_time,
-            })
+        # compute departure_time based on admin setting
+        departure_time = log.created_at + timedelta(minutes=departure_duration)
+        # convert to local time string for template usage (client will parse)
+        departure_time_local = timezone.localtime(departure_time)
+
+        # whether this row is a recently departed (for showing greyed out)
+        recently_departed = False
+        if not log.is_active:
+            # departed and within grace window
+            if log.departed_at and log.departed_at >= departed_cutoff:
+                recently_departed = True
+
+        entries.append({
+            "id": log.id,
+            "vehicle": v,
+            "driver": d,
+            "departure_time": departure_time_local,       # timezone aware datetime
+            "entry_time": timezone.localtime(log.created_at),
+            "is_active": log.is_active,
+            "recently_departed": recently_departed,
+            "route": getattr(v.route, "name", None) if v and v.route else None,
+        })
+
+    # collect distinct routes for the route filter dropdown
+    routes_qs = Vehicle.objects.filter(entry_logs__is_active=True).values_list('route', flat=True).distinct()
+    # convert to actual Route objects if needed in template (we can fetch Route objects)
+    from vehicles.models import Route
+    routes = Route.objects.filter(id__in=[r for r in routes_qs if r])
 
     context = {
-        "queue_entries": enriched_entries,
-        "routes": routes,
-        "selected_route": route_filter,
+        'queue_entries': entries,
+        'routes': routes,
+        'selected_route': route_filter,
+        'departure_duration_minutes': departure_duration,
+        # provide current server time so client JS can calibrate (ISO string)
+        'server_now': timezone.localtime(now),
     }
 
-    return render(request, "passenger/public_queue.html", context)
+    return render(request, 'passenger/public_queue.html', context)
 
 
 def public_queue_data(request):

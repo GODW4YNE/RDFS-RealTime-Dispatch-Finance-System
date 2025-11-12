@@ -76,6 +76,51 @@ def terminal_queue(request):
     return render(request, "terminal/terminal_queue.html")
 
 
+
+@login_required(login_url='login')
+@user_passes_test(is_staff_admin_or_admin)
+@never_cache
+def tv_display_view(request):
+    """
+    Public Passenger Display (TV Mode)
+    - Shows live active vehicles inside the terminal
+    - Refreshes automatically every few seconds
+    - Read-only and fullscreen-friendly
+    """
+    from pytz import timezone as pytz_timezone
+    ph_tz = pytz_timezone("Asia/Manila")
+
+    settings = SystemSettings.get_solo()
+    duration = getattr(settings, "departure_duration_minutes", 30)
+
+    logs = (
+        EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS)
+        .select_related("vehicle__assigned_driver", "vehicle__route")
+        .order_by("created_at")
+    )
+
+    queue = []
+    for log in logs:
+        v = log.vehicle
+        d = v.assigned_driver if v else None
+        route = getattr(v.route, "name", "—") if hasattr(v, "route") else "—"
+        departure_time = log.created_at + timedelta(minutes=duration)
+
+        queue.append({
+            "plate": getattr(v, "license_plate", "N/A"),
+            "driver": f"{d.first_name} {d.last_name}" if d else "N/A",
+            "route": route,
+            "entry_time": timezone.localtime(log.created_at, ph_tz).strftime("%I:%M %p"),
+            "departure_time": timezone.localtime(departure_time, ph_tz).strftime("%I:%M %p"),
+        })
+
+    context = {"queue": queue, "stay_duration": duration}
+    return render(request, "terminal/tv_display.html", context)
+
+
+
+
+
 # ===============================
 #   QUEUE DATA (AJAX endpoint)
 # ===============================
@@ -466,15 +511,28 @@ def manage_routes(request):
         base_fare = request.POST.get("base_fare", "").strip()
         active = bool(request.POST.get("active"))
 
+        # Validate input
         if not origin or not destination:
             messages.error(request, "⚠️ Both origin and destination are required.")
             return redirect("terminal:manage_routes")
 
+        # Convert fare safely
         try:
-            base_fare = Decimal(base_fare) if base_fare else 0.00
-        except:
-            base_fare = 0.00
+            base_fare = Decimal(base_fare) if base_fare else Decimal("0.00")
+        except Exception:
+            base_fare = Decimal("0.00")
 
+        # Prevent duplicate routes
+        existing = Route.objects.filter(
+            origin__iexact=origin,
+            destination__iexact=destination
+        ).exclude(id=route_id).exists()
+
+        if existing:
+            messages.error(request, f"⚠️ Route {origin} → {destination} already exists.")
+            return redirect("terminal:manage_routes")
+
+        # ---- ADD NEW ROUTE ----
         if action == "add":
             Route.objects.create(
                 name=name or f"{origin} - {destination}",
@@ -485,6 +543,7 @@ def manage_routes(request):
             )
             messages.success(request, f"✅ Route {origin} → {destination} added successfully!")
 
+        # ---- EDIT EXISTING ROUTE ----
         elif action == "edit" and route_id:
             route = get_object_or_404(Route, id=route_id)
             route.name = name or f"{origin} - {destination}"
@@ -493,16 +552,23 @@ def manage_routes(request):
             route.base_fare = base_fare
             route.active = active
             route.save()
-            messages.success(request, f"✅ Route {origin} → {destination} updated!")
+            messages.success(request, f"✅ Route {origin} → {destination} updated successfully!")
 
+        # ---- DELETE ROUTE ----
         elif action == "delete" and route_id:
             route = get_object_or_404(Route, id=route_id)
+            route_name = f"{route.origin} → {route.destination}"
             route.delete()
-            messages.success(request, f"🗑️ Route deleted successfully.")
+            messages.success(request, f"🗑️ Route {route_name} deleted successfully!")
+
+        else:
+            messages.warning(request, "⚠️ Invalid action or missing route ID.")
 
         return redirect("terminal:manage_routes")
 
+    # Default (GET request)
     return render(request, "terminal/manage_routes.html", {"routes": routes})
+
 
 
 # ===============================
