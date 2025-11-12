@@ -1,4 +1,4 @@
-#para maka hibaw ko og kani ba na save og wani kadtong main nga naay bugs ang na save
+
 import qrcode
 from io import BytesIO
 from django.core.files import File

@@ -5,8 +5,15 @@ from django.contrib import messages
 from django.contrib.auth import logout, authenticate, login
 from .models import CustomUser
 from .forms import CustomUserCreationForm, CustomUserEditForm
-from vehicles.models import Driver, Vehicle
+from vehicles.models import Driver, Vehicle, Deposit, QueueHistory
 from terminal.models import EntryLog
+from reports.models import Profit
+from django.db.models import Sum, Count
+from django.utils import timezone
+from django.http import JsonResponse
+from datetime import timedelta
+from accounts.utils import is_admin
+
 
 # ===============================
 # ✅ ROLE HELPERS
@@ -222,3 +229,52 @@ def staff_dashboard_view(request):
         'total_queue': total_queue,
     }
     return render(request, 'accounts/staff_dashboard.html', context)
+
+
+
+@login_required(login_url='login')
+@user_passes_test(is_admin)
+def admin_dashboard_data(request):
+    """AJAX endpoint for admin dashboard live data."""
+    total_drivers = Driver.objects.count()
+    total_vehicles = Vehicle.objects.count()
+    total_queue = EntryLog.objects.filter(is_active=True, status="success").count()
+
+    # Totals
+    total_deposits = Deposit.objects.aggregate(total=Sum("amount"))["total"] or 0
+    total_revenue = EntryLog.objects.filter(status="success").aggregate(total=Sum("fee_charged"))["total"] or 0
+    total_profit = Profit.objects.aggregate(total=Sum("amount"))["total"] or 0
+
+    # Last 7 days profit trend
+    now = timezone.localtime()
+    start_date = now - timedelta(days=6)
+    chart_labels, chart_data = [], []
+
+    for i in range(7):
+        day = (start_date + timedelta(days=i)).date()
+        total = (
+            Profit.objects.filter(date_recorded__date=day)
+            .aggregate(Sum("amount"))["amount__sum"]
+            or 0
+        )
+        chart_labels.append(day.strftime("%b %d"))
+        chart_data.append(float(total))
+
+    # Recent queue list for optional display
+    recent_queues = list(
+        EntryLog.objects.filter(is_active=True, status="success")
+        .select_related("vehicle__assigned_driver")
+        .order_by("-created_at")[:10]
+        .values("vehicle__license_plate", "vehicle__assigned_driver__first_name", "vehicle__assigned_driver__last_name")
+    )
+
+    return JsonResponse({
+        "total_drivers": total_drivers,
+        "total_vehicles": total_vehicles,
+        "total_deposits": float(total_deposits),
+        "total_revenue": float(total_revenue),
+        "total_profit": float(total_profit),
+        "chart_labels": chart_labels,
+        "chart_data": chart_data,
+        "recent_queues": recent_queues,
+    })

@@ -1,76 +1,84 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load static %}
-{% block title %}Profit Report | TicketNow{% endblock %}
+{% block title %}Profit Trend | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="row">
-    <!-- Sidebar -->
-    <div class="col-md-3 col-lg-2 bg-light sidebar p-3">
-      {% include 'includes/sidebar.html' %}
+<div class="container-fluid p-4">
+  <h3 class="fw-bold text-primary mb-1">
+    <i class="bi bi-activity"></i> Profit Trend
+  </h3>
+  <p class="text-muted mb-4">
+    Analyze total profit earned across selected time periods.
+  </p>
+
+  <!-- Filter -->
+  <form method="GET" class="row g-3 align-items-end mb-4">
+    <div class="col-md-3">
+      <label class="form-label fw-semibold">Start Date</label>
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control shadow-sm">
     </div>
+    <div class="col-md-3">
+      <label class="form-label fw-semibold">End Date</label>
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control shadow-sm">
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-funnel"></i> Apply Filter
+      </button>
+    </div>
+  </form>
 
-    <!-- Main Content -->
-    <div class="col-md-9 col-lg-10 p-4">
-      <h3 class="mb-3"><i class="bi bi-cash-coin"></i> Profit Report</h3>
-      <p class="text-muted">View recorded profits, filter by date, and review total earnings.</p>
+  <!-- Chart -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3"><i class="bi bi-bar-chart-line text-primary"></i> Profit Overview</h5>
+      <canvas id="profitChart" height="110"></canvas>
+    </div>
+  </div>
 
-      <!-- Filter Form -->
-      <form method="get" class="row g-3 align-items-end mb-4">
-        <div class="col-md-4">
-          <label for="start_date" class="form-label fw-semibold">Start Date</label>
-          <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
-        </div>
-        <div class="col-md-4">
-          <label for="end_date" class="form-label fw-semibold">End Date</label>
-          <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
-        </div>
-        <div class="col-md-4">
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-funnel"></i> Apply Filter
-          </button>
-          <a href="{% url 'reports:profit_report' %}" class="btn btn-secondary">
-            <i class="bi bi-arrow-clockwise"></i> Reset
-          </a>
-        </div>
-      </form>
-
-      <!-- Profit Table -->
-      <div class="card shadow-sm border-0">
-        <div class="card-body table-responsive">
-          {% if profits %}
-          <table class="table table-hover table-bordered align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>#</th>
-                <th>Date Recorded</th>
-                <th>Description</th>
-                <th>Recorded By</th>
-                <th class="text-end">Amount (₱)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for profit in profits %}
-              <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ profit.date_recorded|date:"M d, Y - h:i A" }}</td>
-                <td>{{ profit.description|default:"-" }}</td>
-                <td>{{ profit.recorded_by.username|default:"System" }}</td>
-                <td class="text-end">₱{{ profit.amount }}</td>
-              </tr>
-              {% endfor %}
-              <tr class="table-secondary fw-bold">
-                <td colspan="4" class="text-end">TOTAL</td>
-                <td class="text-end">₱{{ total }}</td>
-              </tr>
-            </tbody>
-          </table>
-          {% else %}
-          <p class="text-center text-muted mb-0">No profit records found for the selected range.</p>
-          {% endif %}
-        </div>
-      </div>
+  <!-- Total Summary -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body text-center">
+      <h5 class="text-muted mb-1">Total Profit</h5>
+      <h3 class="fw-bold text-success">₱{{ total|floatformat:2 }}</h3>
     </div>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const ctx = document.getElementById('profitChart');
+  if (!ctx) return;
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ profit_labels|safe }},
+      datasets: [{
+        label: 'Profit (₱)',
+        data: {{ profit_values|safe }},
+        borderColor: '#198754',
+        backgroundColor: 'rgba(25,135,84,0.15)',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#343a40',
+          titleColor: '#fff',
+          bodyColor: '#fff'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+});
+</script>
 {% endblock %}

@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Deposit Analytics | TicketNow{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-bold text-primary mb-1"><i class="bi bi-graph-up-arrow"></i> Deposit Analytics</h3>
+      <p class="text-muted mb-0">Visual overview of all cash deposits and driver contributions.</p>
+    </div>
+  </div>
+
+  <!-- Filter Form -->
+  <form method="GET" class="row g-3 align-items-end mb-4">
+    <div class="col-md-3">
+      <label class="form-label fw-semibold">Start Date</label>
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control shadow-sm">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label fw-semibold">End Date</label>
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control shadow-sm">
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-funnel"></i> Apply Filter
+      </button>
+    </div>
+  </form>
+
+  <!-- Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <h6 class="text-muted mb-1">Total Deposited</h6>
+        <h3 class="text-success fw-bold">₱{{ total_amount|floatformat:2 }}</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <h6 class="text-muted mb-1">Total Transactions</h6>
+        <h3 class="text-primary fw-bold">{{ total_transactions }}</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <h6 class="text-muted mb-1">Unique Vehicles</h6>
+        <h3 class="text-info fw-bold">{{ unique_vehicles }}</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <h6 class="text-muted mb-1">Unique Drivers</h6>
+        <h3 class="text-warning fw-bold">{{ unique_drivers }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3"><i class="bi bi-bar-chart-line-fill text-primary"></i> Daily Deposit Trend</h5>
+      <canvas id="depositChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Top Drivers -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3"><i class="bi bi-person-badge text-success"></i> Top 5 Drivers by Deposit</h5>
+      {% if top_drivers %}
+      <table class="table table-striped align-middle">
+        <thead class="table-success">
+          <tr>
+            <th>#</th>
+            <th>Driver</th>
+            <th>Total Deposited</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in top_drivers %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ d.wallet__vehicle__assigned_driver__first_name }} {{ d.wallet__vehicle__assigned_driver__last_name }}</td>
+            <td>₱{{ d.total|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p class="text-muted mb-0">No deposits found in this period.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const ctx = document.getElementById('depositChart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: {{ chart_labels|safe }},
+        datasets: [{
+          label: 'Total Deposits (₱)',
+          data: {{ chart_data|safe }},
+          fill: true,
+          borderColor: '#198754',
+          backgroundColor: 'rgba(25,135,84,0.15)',
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#198754',
+            titleColor: '#fff',
+            bodyColor: '#fff'
+          }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

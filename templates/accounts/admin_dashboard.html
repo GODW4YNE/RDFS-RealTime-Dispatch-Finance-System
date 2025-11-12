@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="p-4">
-  <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
-  <p class="text-muted">Welcome back, <strong>{{ user.username }}</strong>. Here’s a quick overview of terminal activity.</p>
+  <h2 class="mb-3"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
+  <p class="text-muted">Welcome back, <strong>{{ user.username }}</strong>. Here’s a quick summary of terminal operations.</p>
 
   <!-- Summary Cards -->
   <div class="row g-4 mb-4">
@@ -50,56 +50,78 @@
     </div>
   </div>
 
-  <!-- Profit Chart -->
-  <div class="card shadow-sm border-0 mb-5">
+  <!-- Recent Queue Activity -->
+  <div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
-      <h5><i class="bi bi-graph-up"></i> Profit Trend (Last 7 Days)</h5>
-      <canvas id="profitChart" height="120"></canvas>
+      <h5 class="card-title mb-3"><i class="bi bi-clock-history text-primary"></i> Recent Queue Activity</h5>
+      {% if recent_queues %}
+      <div class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead class="table-primary">
+            <tr>
+              <th>#</th>
+              <th>Vehicle Plate</th>
+              <th>Vehicle Name</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in recent_queues %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td><strong>{{ v.license_plate }}</strong></td>
+              <td>{{ v.vehicle_name }}</td>
+              <td>
+                {% if v.status == "queued" %}
+                  <span class="badge bg-warning text-dark">Queued</span>
+                {% elif v.status == "boarding" %}
+                  <span class="badge bg-info text-dark">Boarding</span>
+                {% else %}
+                  <span class="badge bg-secondary">Departed</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p class="text-muted text-center"><i class="bi bi-info-circle"></i> No recent activity found.</p>
+      {% endif %}
     </div>
   </div>
 
-  <!-- Quick Links -->
-  <div class="row mt-4 mb-5">
+  <!-- Quick Access -->
+  <div class="row mb-5">
     <div class="col-md-4">
-      <a hx-get="{% url 'accounts:manage_users' %}" 
-         hx-target="#main-content" 
-         hx-swap="innerHTML transition:true"
-         class="text-decoration-none">
+      <a href="{% url 'reports:deposit_analytics' %}" class="text-decoration-none">
         <div class="card border-0 shadow-sm h-100 text-center hover-card">
           <div class="card-body">
-            <i class="bi bi-people fs-2 text-primary"></i>
-            <h5 class="mt-2">Manage Accounts</h5>
-            <p class="text-muted small">Add or edit admin and staff accounts.</p>
+            <i class="bi bi-bar-chart-line fs-2 text-success"></i>
+            <h5 class="mt-2">Reports & Analytics</h5>
+            <p class="text-muted small">View deposits, profit trends, and other reports.</p>
           </div>
         </div>
       </a>
     </div>
-
     <div class="col-md-4">
-      <a hx-get="{% url 'reports:profit_report' %}" 
-         hx-target="#main-content" 
-         hx-swap="innerHTML transition:true"
-         class="text-decoration-none">
+      <a href="{% url 'terminal:manage_routes' %}" class="text-decoration-none">
         <div class="card border-0 shadow-sm h-100 text-center hover-card">
           <div class="card-body">
-            <i class="bi bi-graph-up-arrow fs-2 text-success"></i>
-            <h5 class="mt-2">View Profit Reports</h5>
-            <p class="text-muted small">See all recorded profits by date.</p>
+            <i class="bi bi-signpost-2 fs-2 text-primary"></i>
+            <h5 class="mt-2">Manage Routes</h5>
+            <p class="text-muted small">Add, edit, or deactivate terminal routes.</p>
           </div>
         </div>
       </a>
     </div>
-
     <div class="col-md-4">
-      <a hx-get="{% url 'terminal:manage_queue' %}" 
-         hx-target="#main-content" 
-         hx-swap="innerHTML transition:true"
-         class="text-decoration-none">
+      <a href="{% url 'terminal:system_settings' %}" class="text-decoration-none">
         <div class="card border-0 shadow-sm h-100 text-center hover-card">
           <div class="card-body">
-            <i class="bi bi-clock-history fs-2 text-warning"></i>
-            <h5 class="mt-2">Manage Queue</h5>
-            <p class="text-muted small">View and adjust vehicle queue order.</p>
+            <i class="bi bi-gear fs-2 text-danger"></i>
+            <h5 class="mt-2">System Settings</h5>
+            <p class="text-muted small">Configure terminal fees, deposit rules, and system preferences.</p>
           </div>
         </div>
       </a>
@@ -111,65 +133,4 @@
     <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
   </div>
 </div>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-  const profitEl = document.querySelector(".bg-danger h3");
-  const driversEl = document.querySelector(".bg-primary h3");
-  const vehiclesEl = document.querySelector(".bg-success h3");
-  const queueEl = document.querySelector(".bg-warning h3");
-  const ctx = document.getElementById("profitChart");
-
-  let profitChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [{
-        label: "Profit (₱)",
-        data: [],
-        borderColor: "#007bff",
-        backgroundColor: "rgba(0,123,255,0.2)",
-        fill: true,
-        tension: 0.4,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: { y: { beginAtZero: true } },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => "₱" + ctx.formattedValue } }
-      }
-    }
-  });
-
-  async function fetchDashboardData() {
-    try {
-      const res = await fetch("/vehicles/admin_dashboard_data/");
-      if (!res.ok) throw new Error("Network error");
-      const data = await res.json();
-
-      // Update summary cards
-      driversEl.textContent = data.total_drivers;
-      vehiclesEl.textContent = data.total_vehicles;
-      profitEl.textContent = "₱" + data.total_profit.toFixed(2);
-      queueEl.textContent = data.recent_queues.length;
-
-      // Update 7-day chart
-      profitChart.data.labels = data.chart_labels;
-      profitChart.data.datasets[0].data = data.chart_data;
-      profitChart.update();
-    } catch (err) {
-      console.error("Dashboard update failed:", err);
-    }
-  }
-
-  // Initial load + refresh every 10 seconds
-  fetchDashboardData();
-  setInterval(fetchDashboardData, 10000);
-});
-</script>
 {% endblock %}

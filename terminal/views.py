@@ -65,6 +65,133 @@ def deposit_menu(request):
     return render(request, "terminal/deposit_menu.html", context)
 
 
+
+# ===============================
+#   DEPOSIT ANALYTICS (Admin)
+# ===============================
+@login_required(login_url='login')
+@user_passes_test(is_admin)
+@never_cache
+def deposit_analytics(request):
+    """Admin-only analytics dashboard for deposits."""
+    from django.db.models import Sum, Count
+    from django.db.models.functions import TruncDate
+
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    deposits = (
+        Deposit.objects
+        .select_related("wallet__vehicle__assigned_driver")
+        .order_by("-created_at")
+    )
+
+    # Apply filters
+    if start_date:
+        deposits = deposits.filter(created_at__date__gte=start_date)
+    if end_date:
+        deposits = deposits.filter(created_at__date__lte=end_date)
+
+    # Summary Metrics
+    total_amount = deposits.aggregate(Sum("amount"))["amount__sum"] or 0
+    total_transactions = deposits.count()
+    unique_vehicles = deposits.values("wallet__vehicle").distinct().count()
+    unique_drivers = deposits.values("wallet__vehicle__assigned_driver").distinct().count()
+
+    # Top 5 Drivers
+    top_drivers = (
+        deposits.values("wallet__vehicle__assigned_driver__first_name",
+                        "wallet__vehicle__assigned_driver__last_name")
+        .annotate(total=Sum("amount"))
+        .order_by("-total")[:5]
+    )
+
+    # Daily Deposits Chart
+    daily_data = (
+        deposits.annotate(day=TruncDate("created_at"))
+        .values("day")
+        .annotate(total=Sum("amount"))
+        .order_by("day")
+    )
+
+    chart_labels = [d["day"].strftime("%b %d") for d in daily_data]
+    chart_data = [float(d["total"]) for d in daily_data]
+
+    context = {
+        "total_amount": total_amount,
+        "total_transactions": total_transactions,
+        "unique_vehicles": unique_vehicles,
+        "unique_drivers": unique_drivers,
+        "top_drivers": top_drivers,
+        "chart_labels": chart_labels,
+        "chart_data": chart_data,
+        "start_date": start_date or "",
+        "end_date": end_date or "",
+    }
+    return render(request, "terminal/deposit_analytics.html", context)
+
+
+# ===============================
+#   DEPOSIT VS REVENUE COMPARISON (Admin)
+# ===============================
+@login_required(login_url='login')
+@user_passes_test(is_admin)
+@never_cache
+def deposit_vs_revenue(request):
+    """Compare total deposits vs terminal fees collected (EntryLog fees) per day."""
+    from django.db.models import Sum
+    from django.db.models.functions import TruncDate
+
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    deposits = Deposit.objects.all()
+    logs = EntryLog.objects.filter(status=EntryLog.STATUS_SUCCESS)
+
+    # Apply filters
+    if start_date:
+        deposits = deposits.filter(created_at__date__gte=start_date)
+        logs = logs.filter(created_at__date__gte=start_date)
+    if end_date:
+        deposits = deposits.filter(created_at__date__lte=end_date)
+        logs = logs.filter(created_at__date__lte=end_date)
+
+    # Aggregate per day
+    from collections import defaultdict
+    daily_totals = defaultdict(lambda: {"deposit": 0, "revenue": 0})
+
+    for d in (
+        deposits.annotate(day=TruncDate("created_at"))
+        .values("day")
+        .annotate(total=Sum("amount"))
+    ):
+        daily_totals[d["day"]]["deposit"] = float(d["total"])
+
+    for l in (
+        logs.annotate(day=TruncDate("created_at"))
+        .values("day")
+        .annotate(total=Sum("fee_charged"))
+    ):
+        daily_totals[l["day"]]["revenue"] = float(l["total"])
+
+    # Sort and prepare for chart
+    sorted_days = sorted(daily_totals.keys())
+    chart_labels = [d.strftime("%b %d") for d in sorted_days]
+    deposits_data = [daily_totals[d]["deposit"] for d in sorted_days]
+    revenue_data = [daily_totals[d]["revenue"] for d in sorted_days]
+
+    context = {
+        "chart_labels": chart_labels,
+        "deposits_data": deposits_data,
+        "revenue_data": revenue_data,
+        "start_date": start_date or "",
+        "end_date": end_date or "",
+    }
+    return render(request, "terminal/deposit_vs_revenue.html", context)
+
+
+
+
 # ===============================
 #   TERMINAL QUEUE PAGE WRAPPER
 # ===============================
@@ -80,12 +207,11 @@ def terminal_queue(request):
 @login_required(login_url='login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
-def tv_display_view(request):
+def tv_display_view(request, route_name=None):
     """
     Public Passenger Display (TV Mode)
-    - Shows live active vehicles inside the terminal
-    - Refreshes automatically every few seconds
-    - Read-only and fullscreen-friendly
+    - Groups vehicles by route
+    - Allows specific route filter via URL
     """
     from pytz import timezone as pytz_timezone
     ph_tz = pytz_timezone("Asia/Manila")
@@ -96,25 +222,40 @@ def tv_display_view(request):
     logs = (
         EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS)
         .select_related("vehicle__assigned_driver", "vehicle__route")
-        .order_by("created_at")
+        .order_by("vehicle__route__origin", "vehicle__route__destination", "created_at")
     )
 
-    queue = []
+    # Optional filter for a specific route (slugified)
+    if route_name:
+        route_name = route_name.replace("-", " ").replace("to", "→")
+        logs = logs.filter(vehicle__route__name__icontains=route_name)
+
+    # Group vehicles by route
+    grouped_routes = {}
     for log in logs:
         v = log.vehicle
         d = v.assigned_driver if v else None
-        route = getattr(v.route, "name", "—") if hasattr(v, "route") else "—"
+        route = v.route.name if v and v.route else "Unassigned Route"
         departure_time = log.created_at + timedelta(minutes=duration)
 
-        queue.append({
+        if route not in grouped_routes:
+            grouped_routes[route] = []
+
+        grouped_routes[route].append({
             "plate": getattr(v, "license_plate", "N/A"),
             "driver": f"{d.first_name} {d.last_name}" if d else "N/A",
-            "route": route,
             "entry_time": timezone.localtime(log.created_at, ph_tz).strftime("%I:%M %p"),
             "departure_time": timezone.localtime(departure_time, ph_tz).strftime("%I:%M %p"),
         })
 
-    context = {"queue": queue, "stay_duration": duration}
+    all_routes = Route.objects.filter(active=True).order_by("origin", "destination")
+
+    context = {
+        "grouped_routes": grouped_routes,
+        "stay_duration": duration,
+        "all_routes": all_routes,
+        "selected_route": route_name or "All Routes",
+    }
     return render(request, "terminal/tv_display.html", context)
 
 
@@ -499,9 +640,11 @@ def queue_history(request):
 @user_passes_test(is_admin)
 @never_cache
 def manage_routes(request):
-    """Admin-only page for adding, editing, and deleting routes."""
-    routes = Route.objects.all().order_by('origin', 'destination')
+    """Admin-only page for managing routes and viewing analytics."""
+    from django.db.models import Count, Sum
+    from .models import EntryLog
 
+    # --- ROUTE CRUD HANDLING ---
     if request.method == "POST":
         action = request.POST.get("action")
         route_id = request.POST.get("route_id")
@@ -511,12 +654,11 @@ def manage_routes(request):
         base_fare = request.POST.get("base_fare", "").strip()
         active = bool(request.POST.get("active"))
 
-        # Validate input
+        # Validation
         if not origin or not destination:
             messages.error(request, "⚠️ Both origin and destination are required.")
             return redirect("terminal:manage_routes")
 
-        # Convert fare safely
         try:
             base_fare = Decimal(base_fare) if base_fare else Decimal("0.00")
         except Exception:
@@ -527,12 +669,10 @@ def manage_routes(request):
             origin__iexact=origin,
             destination__iexact=destination
         ).exclude(id=route_id).exists()
-
         if existing:
             messages.error(request, f"⚠️ Route {origin} → {destination} already exists.")
             return redirect("terminal:manage_routes")
 
-        # ---- ADD NEW ROUTE ----
         if action == "add":
             Route.objects.create(
                 name=name or f"{origin} - {destination}",
@@ -543,7 +683,6 @@ def manage_routes(request):
             )
             messages.success(request, f"✅ Route {origin} → {destination} added successfully!")
 
-        # ---- EDIT EXISTING ROUTE ----
         elif action == "edit" and route_id:
             route = get_object_or_404(Route, id=route_id)
             route.name = name or f"{origin} - {destination}"
@@ -554,7 +693,6 @@ def manage_routes(request):
             route.save()
             messages.success(request, f"✅ Route {origin} → {destination} updated successfully!")
 
-        # ---- DELETE ROUTE ----
         elif action == "delete" and route_id:
             route = get_object_or_404(Route, id=route_id)
             route_name = f"{route.origin} → {route.destination}"
@@ -566,8 +704,40 @@ def manage_routes(request):
 
         return redirect("terminal:manage_routes")
 
-    # Default (GET request)
-    return render(request, "terminal/manage_routes.html", {"routes": routes})
+    # --- ANALYTICS SECTION ---
+    routes = Route.objects.all().order_by('origin', 'destination')
+
+    route_stats = (
+        EntryLog.objects
+        .filter(vehicle__route__isnull=False)
+        .values('vehicle__route__id', 'vehicle__route__origin', 'vehicle__route__destination')
+        .annotate(
+            total_trips=Count('id'),
+            total_fees=Sum('fee_charged')
+        )
+        .order_by('-total_trips')
+    )
+
+    total_trips = sum(item['total_trips'] for item in route_stats)
+    total_fees = sum(item['total_fees'] or 0 for item in route_stats)
+    active_routes = routes.filter(active=True).count()
+    top_route = route_stats[0] if route_stats else None
+
+    # --- Chart.js Data ---
+    chart_labels = [f"{r['vehicle__route__origin']} → {r['vehicle__route__destination']}" for r in route_stats]
+    chart_data = [r['total_trips'] for r in route_stats]
+
+    context = {
+        "routes": routes,
+        "total_trips": total_trips,
+        "total_fees": total_fees,
+        "active_routes": active_routes,
+        "top_route": top_route,
+        "chart_labels": chart_labels,
+        "chart_data": chart_data,
+    }
+
+    return render(request, "terminal/manage_routes.html", context)
 
 
 
