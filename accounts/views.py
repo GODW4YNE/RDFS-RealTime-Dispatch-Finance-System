@@ -121,17 +121,38 @@ def create_user(request):
 def edit_user(request, user_id):
     user_obj = get_object_or_404(CustomUser, id=user_id)
 
+    # Staff Admin cannot edit Admin accounts
     if is_staff_admin(request.user) and user_obj.role == 'admin':
         messages.error(request, "Access denied: You cannot edit Admin accounts.")
         return redirect('accounts:manage_users')
 
+    # Load the form
     form = CustomUserEditForm(request.POST or None, instance=user_obj)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, f"✅ User '{user_obj.username}' updated successfully.")
-        return redirect('accounts:manage_users')
 
-    return render(request, 'accounts/edit_user.html', {'form': form, 'user_obj': user_obj})
+    if request.method == 'POST':
+        if form.is_valid():
+
+            # Save username, email, role
+            user = form.save(commit=False)
+            user.save()
+
+            # Handle password update if provided
+            new_password = form.cleaned_data.get("new_password1")
+            if new_password:
+                user.set_password(new_password)
+                user.save()
+                messages.success(request, "User password updated successfully.")
+
+            messages.success(request, f"User '{user.username}' updated successfully.")
+            return redirect('accounts:manage_users')
+
+        else:
+            messages.error(request, "Please correct the errors below.")
+
+    return render(request, 'accounts/edit_user.html', {
+        'form': form,
+        'user_obj': user_obj
+    })
 
 
 # ===============================

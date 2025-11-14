@@ -3,57 +3,70 @@
 {% block title %}Admin Dashboard | TicketNow{% endblock %}
 
 {% block content %}
-<div class="p-4">
-  <h2 class="mb-3"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
-  <p class="text-muted">Welcome back, <strong>{{ user.username }}</strong>. Here’s a quick summary of terminal operations.</p>
+<style>
+  body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .card-box {
+    border-radius: 8px;
+    color: white;
+    padding: 1rem;
+  }
+  .bg-blue { background-color: #007bff; }
+  .bg-green { background-color: #28a745; }
+  .bg-yellow { background-color: #ffc107; color: #212529; }
+  .bg-red { background-color: #dc3545; }
+  .quick-action-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+</style>
+
+<div class="container py-4">
+
+  <h2 class="mb-3 fw-bold"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
+  <p class="text-muted">Welcome back, <strong>{{ user.username }}</strong>.</p>
 
   <!-- Summary Cards -->
-  <div class="row g-4 mb-4">
+  <div class="row g-3 mb-4">
     <div class="col-md-3">
-      <div class="card shadow-sm border-0 text-center bg-primary text-white">
-        <div class="card-body">
-          <i class="bi bi-person-badge fs-2"></i>
-          <h6 class="mt-2">Registered Drivers</h6>
-          <h3 class="fw-bold">{{ total_drivers }}</h3>
-        </div>
+      <div class="card-box bg-blue text-center">
+        <h5>Registered Drivers</h5>
+        <h3>{{ total_drivers }}</h3>
       </div>
     </div>
 
     <div class="col-md-3">
-      <div class="card shadow-sm border-0 text-center bg-success text-white">
-        <div class="card-body">
-          <i class="bi bi-truck fs-2"></i>
-          <h6 class="mt-2">Registered Vehicles</h6>
-          <h3 class="fw-bold">{{ total_vehicles }}</h3>
-        </div>
+      <div class="card-box bg-green text-center">
+        <h5>Registered Vehicles</h5>
+        <h3>{{ total_vehicles }}</h3>
       </div>
     </div>
 
     <div class="col-md-3">
-      <div class="card shadow-sm border-0 text-center bg-warning text-dark">
-        <div class="card-body">
-          <i class="bi bi-list-check fs-2"></i>
-          <h6 class="mt-2">Vehicles in Queue</h6>
-          <h3 class="fw-bold">{{ total_queue }}</h3>
-        </div>
+      <div class="card-box bg-yellow text-center">
+        <h5>Vehicles in Queue</h5>
+        <h3>{{ total_queue }}</h3>
       </div>
     </div>
 
     <div class="col-md-3">
-      <div class="card shadow-sm border-0 text-center bg-danger text-white">
-        <div class="card-body">
-          <i class="bi bi-cash-stack fs-2"></i>
-          <h6 class="mt-2">Total Profit</h6>
-          <h3 class="fw-bold">₱{{ total_profit|floatformat:2 }}</h3>
-        </div>
+      <div class="card-box bg-red text-center">
+        <h5>Total Profit</h5>
+        <h3>₱{{ total_profit|floatformat:2 }}</h3>
       </div>
     </div>
   </div>
 
   <!-- Recent Queue Activity -->
-  <div class="card shadow-sm border-0 mb-4">
+  <div class="card mb-4 shadow-sm border-0">
     <div class="card-body">
-      <h5 class="card-title mb-3"><i class="bi bi-clock-history text-primary"></i> Recent Queue Activity</h5>
+      <h5 class="card-title mb-3">Recent Queue Activity</h5>
+
       {% if recent_queues %}
       <div class="table-responsive">
         <table class="table table-striped align-middle">
@@ -86,51 +99,49 @@
         </table>
       </div>
       {% else %}
-        <p class="text-muted text-center"><i class="bi bi-info-circle"></i> No recent activity found.</p>
+      <p class="text-muted text-center"><i class="bi bi-info-circle"></i> No recent activity found.</p>
       {% endif %}
     </div>
   </div>
 
-  <!-- Quick Access -->
-  <div class="row mb-5">
+  <!-- Quick Actions -->
+  <h5 class="mb-3">Quick Actions</h5>
+  <div class="row g-3 mb-5">
     <div class="col-md-4">
       <a href="{% url 'reports:deposit_analytics' %}" class="text-decoration-none">
-        <div class="card border-0 shadow-sm h-100 text-center hover-card">
-          <div class="card-body">
-            <i class="bi bi-bar-chart-line fs-2 text-success"></i>
-            <h5 class="mt-2">Reports & Analytics</h5>
-            <p class="text-muted small">View deposits, profit trends, and other reports.</p>
-          </div>
+        <div class="quick-action-card text-center">
+          <h6>Reports & Analytics</h6>
+          <p class="small text-muted">View deposits and profit trends.</p>
+          <span class="btn btn-primary btn-sm">Go</span>
         </div>
       </a>
     </div>
+
     <div class="col-md-4">
       <a href="{% url 'terminal:manage_routes' %}" class="text-decoration-none">
-        <div class="card border-0 shadow-sm h-100 text-center hover-card">
-          <div class="card-body">
-            <i class="bi bi-signpost-2 fs-2 text-primary"></i>
-            <h5 class="mt-2">Manage Routes</h5>
-            <p class="text-muted small">Add, edit, or deactivate terminal routes.</p>
-          </div>
+        <div class="quick-action-card text-center">
+          <h6>Manage Routes</h6>
+          <p class="small text-muted">Add, edit, or deactivate terminal routes.</p>
+          <span class="btn btn-primary btn-sm">Go</span>
         </div>
       </a>
     </div>
+
     <div class="col-md-4">
       <a href="{% url 'terminal:system_settings' %}" class="text-decoration-none">
-        <div class="card border-0 shadow-sm h-100 text-center hover-card">
-          <div class="card-body">
-            <i class="bi bi-gear fs-2 text-danger"></i>
-            <h5 class="mt-2">System Settings</h5>
-            <p class="text-muted small">Configure terminal fees, deposit rules, and system preferences.</p>
-          </div>
+        <div class="quick-action-card text-center">
+          <h6>System Settings</h6>
+          <p class="small text-muted">Configure terminal fees and preferences.</p>
+          <span class="btn btn-primary btn-sm">Go</span>
         </div>
       </a>
     </div>
   </div>
 
-  <!-- Footer Info -->
+  <!-- Footer -->
   <div class="text-end">
     <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
   </div>
+
 </div>
 {% endblock %}

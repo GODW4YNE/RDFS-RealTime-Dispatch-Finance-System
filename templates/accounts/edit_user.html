@@ -1,10 +1,140 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit User | TicketNow{% endblock %}
+
 {% block content %}
-<h2>Edit Account: {{ user_obj.username }}</h2>
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Save Changes</button>
-    <a href="{% url 'manage_users' %}" class="btn btn-secondary">Cancel</a>
-</form>
+
+<style>
+    .form-wrapper {
+        max-width: 520px;
+        margin: auto;
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+    .form-title {
+        font-weight: 700;
+        margin-bottom: .5rem;
+    }
+    .form-note {
+        font-size: .9rem;
+        color: #6c757d;
+        margin-bottom: 1.2rem;
+    }
+    .password-section {
+        display: none;
+    }
+</style>
+
+<div class="container py-3">
+    <div class="form-wrapper">
+
+        <!-- Title -->
+        <h3 class="form-title text-center">Edit Account</h3>
+        <p class="form-note text-center">
+            Updating: <strong>{{ user_obj.username }}</strong>
+        </p>
+
+        <!-- Alerts -->
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Username</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Email Address</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Role -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Account Role</label>
+                {{ form.role }}
+                {% if form.role.errors %}
+                    <div class="text-danger small">{{ form.role.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Toggle Password Editing -->
+            <div class="text-center my-3">
+                <button type="button" id="togglePasswordBtn"
+                        class="btn btn-outline-primary btn-sm rounded-pill">
+                    <i class="bi bi-key me-1"></i> Edit Password
+                </button>
+            </div>
+
+            <!-- Password Edit Section -->
+            <div id="passwordSection" class="password-section">
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">New Password</label>
+                    <input type="password" name="new_password1"
+                           class="form-control" placeholder="Enter new password">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Confirm New Password</label>
+                    <input type="password" name="new_password2"
+                           class="form-control" placeholder="Confirm new password">
+                </div>
+
+            </div>
+
+            <!-- Save Button -->
+            <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-primary btn-lg fw-semibold rounded-pill">
+                    <i class="bi bi-save2 me-1"></i> Save Changes
+                </button>
+            </div>
+
+            <!-- Cancel Button -->
+            <div class="text-center mt-3">
+                <a href="{% url 'accounts:manage_users' %}" 
+                   class="btn btn-outline-secondary btn-sm rounded-pill">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<!-- Password Toggle Script -->
+<script>
+    const toggleBtn = document.getElementById("togglePasswordBtn");
+    const passwordSection = document.getElementById("passwordSection");
+
+    toggleBtn.addEventListener("click", function () {
+        const isHidden = passwordSection.style.display === "none" || passwordSection.style.display === "";
+        passwordSection.style.display = isHidden ? "block" : "none";
+
+        toggleBtn.innerHTML = isHidden
+            ? '<i class="bi bi-key me-1"></i> Hide Password Fields'
+            : '<i class="bi bi-key me-1"></i> Edit Password';
+    });
+</script>
+
 {% endblock %}

@@ -35,7 +35,6 @@ class CustomUserManager(BaseUserManager):
 # ------------------------------
 class CustomUser(AbstractUser):
     ROLE_CHOICES = [
-        ('driver', 'Driver'),
         ('admin', 'Admin'),
         ('staff_admin', 'Staff Admin'),
     ]

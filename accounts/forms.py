@@ -156,6 +156,27 @@ class CustomUserCreationForm(UserCreationForm):
         """Hide the Admin role if a staff_admin is creating a user."""
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        # 🎨 Apply Bootstrap classes for UI update
+        self.fields['username'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Username'
+        })
+        self.fields['email'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Email Address'
+        })
+        self.fields['role'].widget.attrs.update({
+            'class': 'form-select'
+        })
+        self.fields['password1'].widget.attrs.update({
+            'class': 'form-control'
+        })
+        self.fields['password2'].widget.attrs.update({
+            'class': 'form-control'
+        })
+
+        # Restrict role if staff_admin is creating the account
         if user and getattr(user, 'role', '') == 'staff_admin':
             self.fields['role'].choices = [('staff_admin', 'Staff Admin')]
 
@@ -163,7 +184,7 @@ class CustomUserCreationForm(UserCreationForm):
         user = super().save(commit=False)
         role = self.cleaned_data.get('role')
 
-        # ✅ Automatically assign correct privileges
+        # Assign correct privileges
         if role == 'admin':
             user.is_staff = True
             user.is_superuser = True
@@ -179,10 +200,60 @@ class CustomUserCreationForm(UserCreationForm):
         return user
 
 
+
 # ✅ USER EDIT FORM
 class CustomUserEditForm(UserChangeForm):
-    password = None  # hide password field
+    password = None  # hide the default password field
+
+    new_password1 = forms.CharField(
+        label="New Password",
+        required=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter new password'
+        })
+    )
+
+    new_password2 = forms.CharField(
+        label="Confirm New Password",
+        required=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm new password'
+        })
+    )
 
     class Meta:
         model = CustomUser
         fields = ['username', 'email', 'role']
+
+        widgets = {
+            'username': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Username'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Email Address'
+            }),
+            'role': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        p1 = cleaned_data.get("new_password1")
+        p2 = cleaned_data.get("new_password2")
+
+        if p1 or p2:
+            if p1 != p2:
+                raise forms.ValidationError("Passwords do not match.")
+
+            if len(p1) < 6:
+                raise forms.ValidationError(
+                    "Password must be at least 6 characters long."
+                )
+
+        return cleaned_data

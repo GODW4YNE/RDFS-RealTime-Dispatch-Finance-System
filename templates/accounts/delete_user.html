@@ -1,11 +1,72 @@
-{% extends 'base.html' %}
-{% block content %}
-<h2>Delete Account</h2>
-<p>Are you sure you want to delete <strong>{{ user_obj.username }}</strong> ({{ user_obj.get_role_display }})?</p>
+{% extends "base.html" %}
+{% load static %}
 
-<form method="POST">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Yes, Delete</button>
-    <a href="{% url 'manage_users' %}" class="btn btn-secondary">Cancel</a>
-</form>
+{% block title %}Delete User | TicketNow{% endblock %}
+
+{% block content %}
+
+<style>
+    .delete-card {
+        max-width: 480px;
+        margin: auto;
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        text-align: center;
+    }
+    .delete-title {
+        font-weight: 700;
+    }
+    .delete-text {
+        font-size: 1rem;
+        color: #555;
+        margin: 1rem 0 1.5rem;
+    }
+</style>
+
+<div class="container py-4">
+
+    <div class="delete-card">
+
+        <!-- Title -->
+        <h3 class="delete-title text-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Delete Account
+        </h3>
+
+        <!-- Message -->
+        <p class="delete-text">
+            Are you sure you want to delete
+            <strong>{{ user_obj.username }}</strong>
+            ({{ user_obj.get_role_display }})?
+        </p>
+
+        <!-- Form -->
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="d-grid gap-2 mt-4">
+
+                <!-- Delete Button -->
+                <button type="submit"
+                        class="btn btn-danger fw-semibold rounded-pill">
+                    <i class="bi bi-trash3-fill me-1"></i>
+                    Yes, Delete Account
+                </button>
+
+                <!-- Cancel Button -->
+                <a href="{% url 'accounts:manage_users' %}"
+                   class="btn btn-outline-secondary btn-sm rounded-pill">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Cancel
+                </a>
+
+            </div>
+        </form>
+
+    </div>
+
+</div>
+
 {% endblock %}

@@ -1,107 +1,132 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Create User{% endblock %}
+{% block title %}Create New Account | TicketNow{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <!-- Page Header -->
-    <div class="text-center mb-4">
-        <h2 class="fw-bold text-primary">Create New Account</h2>
+<style>
+    .form-wrapper {
+        max-width: 520px;
+        margin: auto;
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+    .form-title {
+        font-weight: 700;
+        margin-bottom: .5rem;
+    }
+    .form-note {
+        font-size: .9rem;
+        color: #6c757d;
+        margin-bottom: 1.6rem;
+    }
+</style>
+
+<div class="container py-3">
+
+    <div class="form-wrapper">
+
+        <!-- Title -->
+        <h3 class="form-title text-center">Create New Account</h3>
+
         {% if user.role == 'admin' %}
-            <p class="text-muted">As an <strong>Admin</strong>, you can create both Admin and Staff Admin accounts.</p>
+            <p class="form-note text-center">
+                As an Admin, you can create both Admin and Staff Admin accounts.
+            </p>
         {% else %}
-            <p class="text-muted">As a <strong>Staff Admin</strong>, you can only create Staff Admin accounts.</p>
+            <p class="form-note text-center">
+                As a Staff Admin, you can only create Staff Admin accounts.
+            </p>
         {% endif %}
+
+        <!-- Alerts -->
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Username</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Email Address</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Role -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Account Role</label>
+                {{ form.role }}
+
+                {% if user.role == 'admin' %}
+                    <small class="text-muted d-block mt-1">
+                        • Choose <strong>Admin</strong> or <strong>Staff Admin</strong>.
+                    </small>
+                {% else %}
+                    <small class="text-muted d-block mt-1">
+                        • Only Staff Admin accounts can be created.
+                    </small>
+                {% endif %}
+
+                {% if form.role.errors %}
+                    <div class="text-danger small">{{ form.role.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Password -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Password</label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}
+                    <div class="text-danger small">{{ form.password1.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Confirm Password</label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                    <div class="text-danger small">{{ form.password2.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Submit -->
+            <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-primary btn-lg fw-semibold rounded-pill">
+                    <i class="bi bi-person-plus me-2"></i> Create Account
+                </button>
+            </div>
+
+            <!-- Back -->
+            <div class="text-center mt-3">
+                <a href="{% url 'accounts:manage_users' %}" class="btn btn-outline-secondary btn-sm rounded-pill">
+                    <i class="bi bi-arrow-left"></i> Back to User Management
+                </a>
+            </div>
+
+
+        </form>
     </div>
 
-    <!-- Alert Messages -->
-    {% if messages %}
-    <div class="mb-4">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- Card Form -->
-    <div class="card shadow-lg border-0 rounded-4 mx-auto" style="max-width: 600px;">
-        <div class="card-body p-4">
-            <form method="POST" novalidate>
-                {% csrf_token %}
-
-                <!-- Username -->
-                <div class="mb-3">
-                    <label for="id_username" class="form-label fw-semibold">Username</label>
-                    {{ form.username }}
-                    {% if form.username.errors %}
-                        <div class="text-danger small">{{ form.username.errors.0 }}</div>
-                    {% endif %}
-                </div>
-
-                <!-- Email -->
-                <div class="mb-3">
-                    <label for="id_email" class="form-label fw-semibold">Email Address</label>
-                    {{ form.email }}
-                    {% if form.email.errors %}
-                        <div class="text-danger small">{{ form.email.errors.0 }}</div>
-                    {% endif %}
-                </div>
-
-                <!-- Role -->
-                <div class="mb-3">
-                    <label for="id_role" class="form-label fw-semibold">Account Role</label>
-                    {{ form.role }}
-                    {% if user.role == 'admin' %}
-                        <small class="text-muted d-block mt-1">
-                            • Choose <strong>Admin</strong> for full access or <strong>Staff Admin</strong> for limited dashboard access.
-                        </small>
-                    {% else %}
-                        <small class="text-muted d-block mt-1">
-                            • Only Staff Admin accounts can be created under your role.
-                        </small>
-                    {% endif %}
-                    {% if form.role.errors %}
-                        <div class="text-danger small">{{ form.role.errors.0 }}</div>
-                    {% endif %}
-                </div>
-
-                <!-- Password -->
-                <div class="mb-3">
-                    <label for="id_password1" class="form-label fw-semibold">Password</label>
-                    {{ form.password1 }}
-                    {% if form.password1.errors %}
-                        <div class="text-danger small">{{ form.password1.errors.0 }}</div>
-                    {% endif %}
-                </div>
-
-                <!-- Confirm Password -->
-                <div class="mb-3">
-                    <label for="id_password2" class="form-label fw-semibold">Confirm Password</label>
-                    {{ form.password2 }}
-                    {% if form.password2.errors %}
-                        <div class="text-danger small">{{ form.password2.errors.0 }}</div>
-                    {% endif %}
-                </div>
-
-                <!-- Submit Button -->
-                <div class="d-grid mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg fw-semibold rounded-pill">
-                        <i class="bi bi-person-plus me-2"></i> Create Account
-                    </button>
-                </div>
-
-                <!-- Back Link -->
-                <div class="text-center mt-3">
-                    <a href="{% url 'accounts:manage_users' %}" class="text-decoration-none">
-                        <i class="bi bi-arrow-left"></i> Back to User Management
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
 </div>
 {% endblock %}

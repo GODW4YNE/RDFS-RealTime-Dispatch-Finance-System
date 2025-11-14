@@ -3,106 +3,117 @@
 {% block title %}Staff Dashboard | TicketNow{% endblock %}
 
 {% block content %}
-<div class="p-4">
-  <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Staff Dashboard</h2>
-  <p class="text-muted">
-    Welcome, <strong>{{ user.username }}</strong>. Here’s your quick overview and actions.
+<div class="container py-4">
+
+  <h2 class="mb-2 fw-bold">
+    <i class="bi bi-speedometer2"></i> Staff Dashboard
+  </h2>
+  <p class="text-muted mb-4">
+    Welcome, <strong>{{ user.username }}</strong>. Here's your quick overview and actions.
   </p>
 
   <!-- Summary Cards -->
-  <div class="row g-4 mb-4">
+  <div class="row g-3 mb-4">
     <div class="col-md-4">
-      <div class="card shadow-sm border-0 text-center bg-primary text-white">
-        <div class="card-body">
-          <i class="bi bi-person-badge fs-2"></i>
-          <h6 class="mt-2">Registered Drivers</h6>
-          <h3 class="fw-bold">{{ total_drivers }}</h3>
-        </div>
+      <div class="card-box bg-blue">
+        <h5>Registered Drivers</h5>
+        <h3>{{ total_drivers }}</h3>
       </div>
     </div>
 
     <div class="col-md-4">
-      <div class="card shadow-sm border-0 text-center bg-success text-white">
-        <div class="card-body">
-          <i class="bi bi-truck fs-2"></i>
-          <h6 class="mt-2">Registered Vehicles</h6>
-          <h3 class="fw-bold">{{ total_vehicles }}</h3>
-        </div>
+      <div class="card-box bg-green">
+        <h5>Registered Vehicles</h5>
+        <h3>{{ total_vehicles }}</h3>
       </div>
     </div>
 
     <div class="col-md-4">
-      <div class="card shadow-sm border-0 text-center bg-warning text-dark">
-        <div class="card-body">
-          <i class="bi bi-list-check fs-2"></i>
-          <h6 class="mt-2">Vehicles in Queue</h6>
-          <h3 class="fw-bold">{{ total_queue }}</h3>
-        </div>
+      <div class="card-box bg-yellow">
+        <h5>Vehicles in Queue</h5>
+        <h3>{{ total_queue }}</h3>
       </div>
     </div>
   </div>
 
-  <!-- Quick Action Cards -->
-  <div class="row mt-4 mb-5">
-    <div class="col-md-4">
-      <a hx-get="{% url 'vehicles:register_driver' %}" 
-         hx-target="#main-content" 
-         hx-swap="innerHTML transition:true"
-         class="text-decoration-none">
-        <div class="card border-0 shadow-sm h-100 text-center hover-card">
-          <div class="card-body">
-            <i class="bi bi-person-plus fs-2 text-primary"></i>
-            <h5 class="mt-2">Register Driver</h5>
-            <p class="text-muted small">Add a new driver to the system.</p>
-          </div>
-        </div>
-      </a>
-    </div>
+  <!-- Quick Actions -->
+<h5 class="mb-3">Quick Actions</h5>
+<div class="row g-3">
 
-    <div class="col-md-4">
-      <a hx-get="{% url 'vehicles:register_vehicle' %}" 
-         hx-target="#main-content" 
-         hx-swap="innerHTML transition:true"
-         class="text-decoration-none">
-        <div class="card border-0 shadow-sm h-100 text-center hover-card">
-          <div class="card-body">
-            <i class="bi bi-truck-front fs-2 text-success"></i>
-            <h5 class="mt-2">Register Vehicle</h5>
-            <p class="text-muted small">Assign a new vehicle to a driver.</p>
-          </div>
-        </div>
-      </a>
-    </div>
-
-    <div class="col-md-4">
-      <a hx-get="{% url 'terminal:deposit_menu' %}" 
-         hx-target="#main-content" 
-         hx-swap="innerHTML transition:true"
-         class="text-decoration-none">
-        <div class="card border-0 shadow-sm h-100 text-center hover-card">
-          <div class="card-body">
-            <i class="bi bi-wallet2 fs-2 text-warning"></i>
-            <h5 class="mt-2">Deposit Menu</h5>
-            <p class="text-muted small">Record wallet deposits for vehicles.</p>
-          </div>
-        </div>
-      </a>
-    </div>
+  <!-- Register Driver -->
+  <div class="col-md-4">
+    <a 
+      href="{% url 'vehicles:register_driver' %}"
+      class="text-decoration-none"
+    >
+      <div class="quick-action-card text-center">
+        <h6>Register Driver</h6>
+        <p class="small text-muted">Add a new driver to the system.</p>
+        <span class="btn btn-primary btn-sm">Go</span>
+      </div>
+    </a>
   </div>
 
-  <!-- Footer Info -->
-  <div class="text-end mt-3">
-    <small class="text-muted">Updated as of {{ now|date:"M d, Y - h:i A" }}</small>
+  <!-- Register Vehicle -->
+  <div class="col-md-4">
+    <a 
+      href="{% url 'vehicles:register_vehicle' %}"
+      class="text-decoration-none"
+    >
+      <div class="quick-action-card text-center">
+        <h6>Register Vehicle</h6>
+        <p class="small text-muted">Assign a new vehicle to a driver.</p>
+        <span class="btn btn-primary btn-sm">Go</span>
+      </div>
+    </a>
   </div>
+
+  <!-- Deposit Menu -->
+  <div class="col-md-4">
+    <a 
+      href="{% url 'terminal:deposit_menu' %}"
+      class="text-decoration-none"
+    >
+      <div class="quick-action-card text-center">
+        <h6>Deposit Menu</h6>
+        <p class="small text-muted">Record wallet deposits for vehicles.</p>
+        <span class="btn btn-primary btn-sm">Go</span>
+      </div>
+    </a>
+  </div>
+
 </div>
 
+
 <style>
-  .hover-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  body {
+    background-color: #f8f9fa;
   }
-  .hover-card:hover {
+  .card-box {
+    border-radius: 8px;
+    color: white;
+    padding: 1rem;
+  }
+  .bg-blue { background-color: #007bff; }
+  .bg-green { background-color: #28a745; }
+  .bg-yellow { background-color: #ffc107; color: #212529; }
+
+  .quick-action-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .quick-action-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.15);
+  }
+
+  .updated-note {
+    font-size: 0.85rem;
+    color: #6c757d;
   }
 </style>
 {% endblock %}
