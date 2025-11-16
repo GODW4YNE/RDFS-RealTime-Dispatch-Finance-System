@@ -12,9 +12,42 @@ import csv
 from datetime import timedelta
 from accounts.utils import is_staff_admin_or_admin, is_admin   # ✅ imported shared role checks
 from pytz import timezone as pytz_timezone
+from django.db.models import Q
+from django.utils.text import slugify
+
+# Default delete window (minutes) for cleanup of old logs (tweakable)
+DEFAULT_DELETE_AFTER_MINUTES = 10
+
+
+def _apply_auto_close_and_cleanup(now=None, delete_after_minutes=None):
+    """
+    Centralized maintenance for entry logs:
+    - Auto-close (is_active=False + departed_at set) any entry where created_at + departure_duration <= now.
+    - Delete old departed/non-active entries older than delete_after_minutes.
+    This uses the admin-configured SystemSettings.departure_duration_minutes as the authoritative rule.
+    """
+    now = now or timezone.now()
+    settings = SystemSettings.get_solo()
+    departure_duration = getattr(settings, "departure_duration_minutes", 30)
+
+    # 1) Auto-close active entries where created_at + departure_duration <= now
+    # Compute cutoff = now - departure_duration
+    cutoff = now - timedelta(minutes=int(departure_duration))
+    # Only affect entries that are still marked active and were created at or before cutoff
+    active_to_close = EntryLog.objects.filter(is_active=True, created_at__lte=cutoff)
+    if active_to_close.exists():
+        active_to_close.update(is_active=False, departed_at=now)
+
+    # 2) Delete departed/non-active entries older than delete_after_minutes
+    delete_after_minutes = delete_after_minutes if delete_after_minutes is not None else DEFAULT_DELETE_AFTER_MINUTES
+    delete_cutoff = now - timedelta(minutes=int(delete_after_minutes))
+    old_qs = EntryLog.objects.filter(created_at__lt=delete_cutoff).filter(Q(is_active=False) | Q(departed_at__isnull=False))
+    if old_qs.exists():
+        old_qs.delete()
+
 
 # ---- Deposit menu (unchanged) ----
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def deposit_menu(request):
@@ -69,7 +102,7 @@ def deposit_menu(request):
 # ===============================
 #   DEPOSIT ANALYTICS (Admin)
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_admin)
 @never_cache
 def deposit_analytics(request):
@@ -134,7 +167,7 @@ def deposit_analytics(request):
 # ===============================
 #   DEPOSIT VS REVENUE COMPARISON (Admin)
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_admin)
 @never_cache
 def deposit_vs_revenue(request):
@@ -195,81 +228,95 @@ def deposit_vs_revenue(request):
 # ===============================
 #   TERMINAL QUEUE PAGE WRAPPER
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def terminal_queue(request):
     """Render the main terminal queue page (the page which will poll queue-data)."""
+    # ensure auto-close/cleanup runs for admin pages too
+    _apply_auto_close_and_cleanup()
     return render(request, "terminal/terminal_queue.html")
 
 
-
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
-def tv_display_view(request, route_name=None):
+def tv_display_view(request, route_slug=None):
     """
-    Public Passenger Display (TV Mode)
-    - Groups vehicles by route
-    - Allows specific route filter via URL
+    Terminal TV Display
+    - Correct route filtering using slug
+    - Groups active vehicles by route
     """
-    from pytz import timezone as pytz_timezone
+
+    # Run cleanup for consistency
+    _apply_auto_close_and_cleanup()
+
+    # Local timezone
     ph_tz = pytz_timezone("Asia/Manila")
 
     settings = SystemSettings.get_solo()
     duration = getattr(settings, "departure_duration_minutes", 30)
 
+    # All available routes (for dropdown)
+    all_routes = Route.objects.filter(active=True).order_by("origin", "destination")
+
+    # Build slug → name mapping
+    route_map = {slugify(r.name): r.name for r in all_routes}
+
+    selected_route_name = None
+
+    # If slug is provided, convert to real route name
+    if route_slug:
+        route_slug = route_slug.lower().strip("/")
+        selected_route_name = route_map.get(route_slug)
+
+    # Base queryset of active entries
     logs = (
         EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS)
         .select_related("vehicle__assigned_driver", "vehicle__route")
         .order_by("vehicle__route__origin", "vehicle__route__destination", "created_at")
     )
 
-    # Optional filter for a specific route (slugified)
-    if route_name:
-        route_name = route_name.replace("-", " ").replace("to", "→")
-        logs = logs.filter(vehicle__route__name__icontains=route_name)
+    # Apply route filter
+    if selected_route_name:
+        logs = logs.filter(vehicle__route__name=selected_route_name)
 
-    # Group vehicles by route
+    # Group output
     grouped_routes = {}
     for log in logs:
         v = log.vehicle
         d = v.assigned_driver if v else None
-        route = v.route.name if v and v.route else "Unassigned Route"
+        route_name = v.route.name if v and v.route else "Unassigned Route"
+
         departure_time = log.created_at + timedelta(minutes=duration)
 
-        if route not in grouped_routes:
-            grouped_routes[route] = []
-
-        grouped_routes[route].append({
+        grouped_routes.setdefault(route_name, []).append({
             "plate": getattr(v, "license_plate", "N/A"),
             "driver": f"{d.first_name} {d.last_name}" if d else "N/A",
             "entry_time": timezone.localtime(log.created_at, ph_tz).strftime("%I:%M %p"),
             "departure_time": timezone.localtime(departure_time, ph_tz).strftime("%I:%M %p"),
         })
 
-    all_routes = Route.objects.filter(active=True).order_by("origin", "destination")
-
     context = {
         "grouped_routes": grouped_routes,
         "stay_duration": duration,
         "all_routes": all_routes,
-        "selected_route": route_name or "All Routes",
+        "selected_route": selected_route_name or "All Routes",
     }
+
     return render(request, "terminal/tv_display.html", context)
-
-
-
-
 
 # ===============================
 #   QUEUE DATA (AJAX endpoint)
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def queue_data(request):
     """AJAX endpoint for live queue refresh."""
+    # maintenance
+    _apply_auto_close_and_cleanup()
+
     logs = (
         EntryLog.objects.filter(status=EntryLog.STATUS_SUCCESS, is_active=True)
         .select_related("vehicle__assigned_driver", "staff")
@@ -298,10 +345,13 @@ def queue_data(request):
 # ===============================
 #   SIMPLE QUEUE (TV)
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def simple_queue_view(request):
+    # maintenance
+    _apply_auto_close_and_cleanup()
+
     settings = SystemSettings.get_solo()
     duration = getattr(settings, "departure_duration_minutes", 30)
     logs = EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS).select_related("vehicle__assigned_driver").order_by("-created_at")
@@ -324,10 +374,13 @@ def simple_queue_view(request):
 # ===============================
 #   MANAGE QUEUE
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def manage_queue(request):
+    # maintenance
+    _apply_auto_close_and_cleanup()
+
     settings = SystemSettings.get_solo()
     duration = getattr(settings, "departure_duration_minutes", 30)
     logs = EntryLog.objects.filter(is_active=True, status=EntryLog.STATUS_SUCCESS).select_related("vehicle__assigned_driver","staff").order_by("-created_at")
@@ -350,11 +403,14 @@ def manage_queue(request):
 # ===============================
 #   QR ENTRY / EXIT
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def qr_scan_entry(request):
     """Handles QR scan for both entry & departure validation with live balance feedback."""
+    # Run maintenance on entry routes too so state is consistent when scanning
+    _apply_auto_close_and_cleanup()
+
     settings = SystemSettings.get_solo()
     entry_fee = settings.terminal_fee
     cooldown_minutes = settings.entry_cooldown_minutes
@@ -475,7 +531,7 @@ def qr_scan_entry(request):
     return render(request, "terminal/qr_scan_entry.html", context)
 
 
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def qr_exit_validation(request):
@@ -504,7 +560,7 @@ def qr_exit_validation(request):
         return JsonResponse({"status": "error", "message": str(e)})
 
 
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def qr_exit_page(request):
@@ -514,7 +570,7 @@ def qr_exit_page(request):
 # ===============================
 #   SYSTEM SETTINGS (Admin only)
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_admin)
 @never_cache
 def system_settings(request):
@@ -562,7 +618,7 @@ def system_settings(request):
 # ===============================
 #   MARK DEPARTED / UPDATE TIME / HISTORY
 # ===============================
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def mark_departed(request, entry_id):
@@ -578,7 +634,7 @@ def mark_departed(request, entry_id):
         return JsonResponse({"success": False, "message": str(e)})
 
 
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def update_departure_time(request, entry_id):
@@ -599,7 +655,7 @@ def update_departure_time(request, entry_id):
         return JsonResponse({"success": False, "message": str(e)})
 
 
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @never_cache
 def queue_history(request):
@@ -636,7 +692,7 @@ def queue_history(request):
                    "start_date": start_date, "end_date": end_date})
 
 
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_admin)
 @never_cache
 def manage_routes(request):
@@ -746,7 +802,7 @@ def manage_routes(request):
 # ===============================
 from django.views.decorators.csrf import csrf_exempt
 
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @csrf_exempt
 def ajax_add_deposit(request):
@@ -787,7 +843,7 @@ def ajax_add_deposit(request):
         return JsonResponse({'success': False, 'message': str(e)})
 
 
-@login_required(login_url='login')
+@login_required(login_url='accounts:login')
 @user_passes_test(is_staff_admin_or_admin)
 @csrf_exempt
 def ajax_get_wallet_balance(request):

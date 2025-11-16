@@ -7,7 +7,7 @@ from django.shortcuts import redirect
 
 urlpatterns = [
     # ✅ Default route: redirect to Passenger Public Page (public landing for now)
-    path('', lambda request: redirect('passenger:public_queue')),
+    path('', lambda request: redirect('passenger:home')),
 
     # 🔒 Hidden Django admin site (only accessible to authorized people)
     path('super-secret-admin/', admin.site.urls),
