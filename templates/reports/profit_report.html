@@ -5,11 +5,22 @@
 {% block content %}
 <div class="container-fluid p-4">
   <h3 class="fw-bold text-primary mb-1">
-    <i class="bi bi-activity"></i> Profit Trend
+    <i class="bi bi-graph-up-arrow me-2"></i> Profit Trend
   </h3>
   <p class="text-muted mb-4">
     Analyze total profit earned across selected time periods.
   </p>
+
+
+
+<div class="text-end mb-3">
+  <a href="{% url 'reports:reports_home' %}" 
+     class="btn btn-outline-secondary btn-sm rounded-pill">
+    <i class="bi bi-arrow-left-circle-fill me-1"></i> Back to Reports Home
+  </a>
+</div>
+
+
 
   <!-- Filter -->
   <form method="GET" class="row g-3 align-items-end mb-4">
@@ -23,7 +34,7 @@
     </div>
     <div class="col-md-3 d-flex align-items-end">
       <button type="submit" class="btn btn-primary px-4">
-        <i class="bi bi-funnel"></i> Apply Filter
+        <i class="bi bi-funnel-fill me-1"></i> Apply Filter
       </button>
     </div>
   </form>
@@ -31,7 +42,7 @@
   <!-- Chart -->
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
-      <h5 class="card-title mb-3"><i class="bi bi-bar-chart-line text-primary"></i> Profit Overview</h5>
+      <h5 class="card-title mb-3"><i class="bi bi-bar-chart-fill text-primary me-2"></i> Profit Overview</h5>
       <canvas id="profitChart" height="110"></canvas>
     </div>
   </div>

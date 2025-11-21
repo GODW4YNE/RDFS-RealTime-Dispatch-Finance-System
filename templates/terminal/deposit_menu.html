@@ -32,7 +32,7 @@
 
 <div class="p-4 deposit-container">
   <div class="d-flex align-items-center justify-content-between mb-3">
-    <h3 class="fw-bold text-primary section-title"><i class="bi bi-wallet2 me-2"></i> Deposit Menu</h3>
+    <h3 class="fw-bold text-primary section-title"><i class="bi bi-wallet-fill me-2"></i> Deposit Menu</h3>
     <span class="text-muted note-muted">Minimum required before entry: <strong>₱{{ min_deposit }}</strong></span>
   </div>
 
@@ -49,7 +49,7 @@
   <!-- ========== ADMIN VIEW ========== -->
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-primary text-white fw-semibold d-flex justify-content-between align-items-center">
-      <div><i class="bi bi-clock-history me-2"></i> Deposit History</div>
+      <div><i class="bi bi-clock-fill me-2"></i> Deposit History</div>
       <div class="today-badge text-white small">
         <span class="badge bg-light text-dark">
           Showing: {{ start_date }}{% if end_date %} — {{ end_date }}{% endif %}
@@ -70,7 +70,7 @@
         </div>
         <div class="col-md-4 d-flex align-items-end">
           <button type="submit" class="btn btn-primary w-100">
-            <i class="bi bi-funnel"></i> Apply Filter
+            <i class="bi bi-funnel-fill me-1"></i> Apply Filter
           </button>
         </div>
       </form>
@@ -111,7 +111,7 @@
   <!-- ========== STAFF VIEW ========== -->
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-success text-white fw-semibold">
-      <i class="bi bi-plus-circle"></i> Add Deposit
+      <i class="bi bi-plus-circle-fill me-1"></i> Add Deposit
     </div>
     <div class="card-body">
       <form method="POST" action="{% url 'terminal:deposit_menu' %}">
@@ -134,7 +134,7 @@
           </div>
           <div class="col-md-3 d-flex align-items-end">
             <button type="submit" class="btn btn-success w-100">
-              <i class="bi bi-cash-stack"></i> Add Deposit
+              <i class="bi bi-cash-coin me-1"></i> Add Deposit
             </button>
           </div>
         </div>
@@ -144,7 +144,7 @@
 
   <div class="card shadow-sm border-0">
     <div class="card-header bg-light fw-bold">
-      <i class="bi bi-clock-history"></i> Recent Deposits (Today)
+      <i class="bi bi-clock-fill me-1"></i> Recent Deposits (Today)
     </div>
     <div class="card-body">
       <div class="table-responsive">
@@ -182,7 +182,7 @@
   <!-- Back Button -->
   <div class="mt-4 text-end">
     <a href="{% url 'accounts:staff_dashboard' %}" class="btn btn-secondary btn-lg">
-      <i class="bi bi-arrow-left"></i> Back to Dashboard
+      <i class="bi bi-arrow-left-circle-fill me-1"></i> Back to Dashboard
     </a>
   </div>
 </div>
@@ -216,7 +216,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      $('#walletInfo').html('<i class="bi bi-arrow-repeat spin"></i> Checking balance...');
+      $('#walletInfo').html('<i class="bi bi-arrow-repeat spin me-1"></i> Checking balance...');
 
       $.get("{% url 'terminal:ajax_get_wallet_balance' %}", { vehicle_id: vehicleId })
         .done(function(response) {

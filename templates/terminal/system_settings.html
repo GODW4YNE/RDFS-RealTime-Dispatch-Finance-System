@@ -4,13 +4,13 @@
 
 {% block content %}
 <div class="container-fluid p-4">
-  <h3><i class="bi bi-gear"></i> System Settings</h3>
+  <h3><i class="bi bi-gear-fill me-2"></i> System Settings</h3>
   <p class="text-muted">Manage terminal-wide configurations such as entry fee and vehicle seat limits.</p>
 
   <!-- 🟩 Current Fee Display -->
   <div class="alert alert-info d-flex align-items-center justify-content-between">
     <div>
-      <i class="bi bi-cash-stack me-2"></i>
+      <i class="bi bi-cash-coin me-2"></i>
       <strong>Current Terminal Fee:</strong> ₱{{ form.instance.terminal_fee }}
     </div>
     <span class="text-muted small">Last updated: {{ form.instance.updated_at|date:"M d, Y H:i" }}</span>
@@ -73,7 +73,7 @@
 
         <!-- 🟧 Seat Capacity Limits -->
         <div class="border-top pt-3 mt-4">
-          <h5 class="fw-bold mb-3"><i class="bi bi-bus-front-fill"></i> Seat Capacity Limits</h5>
+          <h5 class="fw-bold mb-3"><i class="bi bi-bus-front-fill me-2"></i> Seat Capacity Limits</h5>
           <p class="text-muted small mb-4">
             Define the maximum number of seats allowed for each vehicle type based on LTO standards.
           </p>
@@ -115,10 +115,10 @@
         <!-- Buttons -->
         <div class="text-end mt-4">
           <button type="button" class="btn btn-success" id="openConfirmModal">
-            <i class="bi bi-save"></i> Save Settings
+            <i class="bi bi-check-circle-fill me-1"></i> Save Settings
           </button>
           <a href="{% url 'accounts:admin_dashboard' %}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Back
+            <i class="bi bi-arrow-left-circle-fill me-1"></i> Back
           </a>
         </div>
       </form>
@@ -131,7 +131,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="confirmModalLabel"><i class="bi bi-exclamation-triangle-fill"></i> Confirm Update</h5>
+        <h5 class="modal-title" id="confirmModalLabel"><i class="bi bi-x-octagon-fill me-2"></i> Confirm Update</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -141,7 +141,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-success" id="confirmSaveBtn">
-          <i class="bi bi-check-circle"></i> Yes, Update
+          <i class="bi bi-check-circle-fill me-1"></i> Yes, Update
         </button>
       </div>
     </div>

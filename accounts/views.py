@@ -163,17 +163,19 @@ def edit_user(request, user_id):
 @never_cache
 def delete_user(request, user_id):
     user_obj = get_object_or_404(CustomUser, id=user_id)
+
     if request.method == 'POST':
+        username = user_obj.username  # store before deleting
         user_obj.delete()
-        messages.success(request, f"✅ User '{user_obj.username}' deleted successfully.")
+        messages.success(request, f"✅ User '{username}' deleted successfully.")
         return redirect('accounts:manage_users')
 
     context = {
-        'item_name': user_obj.username,
-        'item_type': 'User Account',
-        'cancel_url': '/accounts/manage-users/',
+        'user_obj': user_obj,  # required by delete_user.html
     }
-    return render(request, 'includes/confirm_delete.html', context)
+    return render(request, 'accounts/delete_user.html', context)
+
+
 
 
 # ===============================

@@ -36,20 +36,23 @@
   }
 
   .logo img {
-    width: 60px;
-    height: 60px;
+    width: 90px;   /* bigger size */
+    height: auto;  /* keep aspect ratio */
+    display: inline-block;
+    vertical-align: middle; /* keeps alignment with text */
   }
 
   .logo h1 {
     font-size: 1.8rem;
     font-weight: bold;
-    margin-top: 0.5rem;
+    margin: 0; /* remove extra spacing */
     color: #007bff;
   }
 
   .logo p {
     font-size: 0.95rem;
     color: #6c757d;
+    margin: 0; /* keep tight spacing */
   }
 
   .form-label {
@@ -107,7 +110,7 @@
         <div class="input-group">
           <input type="password" name="password" id="password" class="form-control" placeholder="Enter your password" required>
           <button type="button" class="btn btn-outline-secondary btn-eye" onclick="togglePassword()" aria-label="Toggle password visibility">
-            👁️
+            <i class="bi bi-eye"></i>
           </button>
         </div>
       </div>

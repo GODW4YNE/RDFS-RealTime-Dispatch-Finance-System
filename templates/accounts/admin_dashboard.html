@@ -28,7 +28,7 @@
 
 <div class="container py-4">
 
-  <h2 class="mb-3 fw-bold"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
+  <h2 class="mb-3 fw-bold"><i class="bi bi-house-door-fill me-2"></i> Admin Dashboard</h2>
   <p class="text-muted">Welcome back, <strong>{{ user.username }}</strong>.</p>
 
   <!-- Summary Cards -->
@@ -108,12 +108,12 @@
   <h5 class="mb-3">Quick Actions</h5>
   <div class="row g-3 mb-5">
     <div class="col-md-4">
-      <a href="{% url 'reports:deposit_analytics' %}" class="text-decoration-none">
-        <div class="quick-action-card text-center">
-          <h6>Reports & Analytics</h6>
-          <p class="small text-muted">View deposits and profit trends.</p>
-          <span class="btn btn-primary btn-sm">Go</span>
-        </div>
+      <a href="{% url 'reports:reports_home' %}" class="text-decoration-none">
+          <div class="quick-action-card text-center">
+            <h6>Reports & Analytics</h6>
+            <p class="small text-muted">View all reports and analytics.</p>
+            <span class="btn btn-primary btn-sm">Go</span>
+          </div>
       </a>
     </div>
 

@@ -100,13 +100,13 @@
   <!-- Back to Home Button -->
   <div class="mb-4">
     <a href="{% url 'passenger:home' %}" class="btn btn-outline-primary">
-      ← Back to Home
+      <i class="bi bi-arrow-left-circle-fill me-1"></i> Back to Home
     </a>
   </div>
 
   <!-- Title -->
   <div class="d-flex align-items-center mb-3">
-    <img src="{% static 'img/TicketNow-Logo.png' %}" alt="TicketNow Logo" width="50" height="50" class="me-2">
+    <img src="{% static 'img/TicketNow-Logo.png' %}" alt="TicketNow Logo" width="80" height="80" class="me-2">
     <h2 class="fw-bold mb-0">Terminal Vehicle Schedule</h2>
   </div>
 
@@ -198,7 +198,7 @@
   </div>
 
   <p class="refresh-note text-end mt-3">
-    <i class="bi bi-arrow-repeat"></i>
+    <i class="bi bi-arrow-repeat me-1"></i>
     Auto-refreshing every 15 seconds for live updates.
   </p>
 

@@ -29,13 +29,13 @@
     <!-- Header -->
     <div class="page-header">
         <div>
-            <h3 class="fw-bold"><i class="bi bi-person-gear"></i> Manage Accounts</h3>
+            <h3 class="fw-bold"><i class="bi bi-person-badge-fill me-2"></i> Manage Accounts</h3>
             <p class="text-muted mb-0">View, create, and manage admin and staff accounts.</p>
         </div>
 
         <!-- Create New Account -->
         <a href="{% url 'accounts:create_user' %}" class="btn btn-primary">
-            <i class="bi bi-person-plus"></i> Create New Account
+            <i class="bi bi-person-plus-fill me-1"></i> Create New Account
         </a>
     </div>
 
@@ -60,15 +60,11 @@
                     <td>
                         {% if user.role == 'admin' %}
                             <span class="badge bg-danger">
-                                <i class="bi bi-shield-lock"></i> Admin
+                                <i class="bi bi-shield-lock-fill me-1"></i> Admin
                             </span>
                         {% elif user.role == 'staff_admin' %}
                             <span class="badge bg-primary">
-                                <i class="bi bi-person-gear"></i> Staff Admin
-                            </span>
-                        {% elif user.role == 'driver' %}
-                            <span class="badge bg-secondary">
-                                <i class="bi bi-person"></i> Driver
+                                <i class="bi bi-person-badge-fill me-1"></i> Staff Admin
                             </span>
                         {% else %}
                             <span class="badge bg-dark">Unknown</span>
@@ -78,10 +74,10 @@
                     <!-- Actions -->
                     <td class="text-center">
                         <a href="{% url 'accounts:edit_user' user.id %}" class="btn btn-warning btn-sm">
-                            <i class="bi bi-pencil-square"></i> Edit
+                            <i class="bi bi-pencil-fill me-1"></i> Edit
                         </a>
                         <a href="{% url 'accounts:delete_user' user.id %}" class="btn btn-danger btn-sm">
-                            <i class="bi bi-trash"></i> Delete
+                            <i class="bi bi-trash-fill me-1"></i> Delete
                         </a>
                     </td>
                 </tr>

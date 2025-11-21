@@ -1,18 +1,21 @@
 {# templates/includes/sidebar_staff.html #}
 {% load static %}
 
-<div class="text-center mb-4">
-  <img src="{% static 'img/TicketNow-Logo.png' %}" alt="TicketNow Logo" width="50" height="50">
-  <h4 class="mt-2 text-white fw-bold">TICKETNOW</h4>
-  <p class="text-light small mb-0">Staff Menu</p>
+<div class="d-flex align-items-center justify-content-center mb-4">
+  <img src="{% static 'img/TicketNow-Logo.png' %}" alt="TicketNow Logo" class="logo-img me-2">
+  <div>
+    <h4 class="text-white fw-bold mb-0">TICKETNOW</h4>
+    <p class="text-light small mb-0">Staff Menu</p>
+  </div>
 </div>
+
 
 <ul class="list-unstyled">
 
   <!-- 🏠 Dashboard -->
   <li>
     <a href="{% url 'accounts:staff_dashboard' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-speedometer2 me-2"></i> Dashboard
+      <i class="bi bi-house-door-fill me-2"></i> Dashboard
     </a>
   </li>
 
@@ -22,22 +25,22 @@
   </li>
   <li>
     <a href="{% url 'vehicles:register_driver' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-person-plus me-2"></i> Register Driver
+      <i class="bi bi-person-plus-fill me-2"></i> Register Driver
     </a>
   </li>
   <li>
     <a href="{% url 'vehicles:registered_drivers' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-people me-2"></i> Registered Drivers
+      <i class="bi bi-person-lines-fill me-2"></i> Registered Drivers
     </a>
   </li>
   <li>
     <a href="{% url 'vehicles:register_vehicle' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-truck me-2"></i> Register Vehicle
+      <i class="bi bi-truck-front-fill me-2"></i> Register Vehicle
     </a>
   </li>
   <li>
     <a href="{% url 'vehicles:registered_vehicles' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-list-ul me-2"></i> Registered Vehicles
+      <i class="bi bi-card-list me-2"></i> Registered Vehicles
     </a>
   </li>
 
@@ -47,7 +50,7 @@
   </li>
   <li>
     <a href="{% url 'terminal:deposit_menu' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-wallet2 me-2"></i> Deposit Menu
+      <i class="bi bi-cash-stack me-2"></i> Deposit Menu
     </a>
   </li>
 
@@ -57,12 +60,12 @@
   </li>
   <li>
     <a href="{% url 'terminal:qr_scan_entry' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-box-arrow-in-right me-2"></i> QR Entry
+      <i class="bi bi-qr-code-scan me-2"></i> QR Entry
     </a>
   </li>
   <li>
     <a href="{% url 'terminal:qr_exit_page' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-box-arrow-right me-2"></i> QR Exit
+      <i class="bi bi-qr-code me-2"></i> QR Exit
     </a>
   </li>
 
@@ -72,14 +75,14 @@
   </li>
   <li>
     <a href="{% url 'terminal:tv_display' %}" target="_blank" class="d-block text-white py-2 px-3">
-      <i class="bi bi-tv me-2"></i> Terminal TV Display
+      <i class="bi bi-display-fill me-2"></i> Terminal TV Display
     </a>
   </li>
 
   <!-- 🚪 Logout -->
   <li class="mt-4">
     <a href="{% url 'accounts:logout' %}" class="d-block text-white py-2 px-3">
-      <i class="bi bi-box-arrow-right me-2"></i> Logout
+      <i class="bi bi-door-closed-fill me-2"></i> Logout
     </a>
   </li>
 
