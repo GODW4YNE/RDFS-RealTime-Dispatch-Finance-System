@@ -6,10 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Announcements | TicketNow</title>
 
-    <link rel="icon" type="image/png" href="{% static 'img/TicketNow-Logo.png' %}">
-    <link rel="shortcut icon" href="{% static 'img/TicketNow-Logo.png' %}">
+  <link rel="icon" type="image/png" href="{% static 'img/TicketNow-Logo.png' %}">
+  <link rel="shortcut icon" href="{% static 'img/TicketNow-Logo.png' %}">
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
   <style>
     body {
@@ -35,27 +36,40 @@
     }
     .announcement-title {
       font-weight: bold;
-      font-size: 1.6rem;
-      margin-bottom: 1rem;
+      font-size: 1.8rem;
+      margin-bottom: 1.5rem;
+      color: #333;
     }
     .announcement-text {
       font-size: 1rem;
       color: #343a40;
       line-height: 1.6;
+      margin-bottom: 1.5rem;
     }
-    .terminal-image {
-      max-width: 100%;
-      border-radius: 8px;
+
+    /* ✨ Wider Announcement image */
+    .announcement-wide {
+      width: 100%;
+      max-height: 550px;
+      object-fit: cover;
+      border-radius: 12px;
       margin-top: 1.5rem;
     }
+
     .subsection-title {
       font-weight: bold;
-      margin-top: 2rem;
+      margin-top: 2.5rem;
       font-size: 1.3rem;
+      color: #333;
     }
+
+    /* ✨ Wider building images side-by-side */
     .building-gallery img {
       width: 100%;
-      border-radius: 8px;
+      height: 320px;
+      object-fit: cover;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       margin-bottom: 1rem;
     }
   </style>
@@ -78,23 +92,18 @@
 
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
-
           <li class="nav-item">
             <a class="nav-link" href="{% url 'passenger:home' %}">HOME</a>
           </li>
-
           <li class="nav-item">
             <a class="nav-link" href="{% url 'passenger:announcement' %}">ANNOUNCEMENT</a>
           </li>
-
           <li class="nav-item">
             <a class="nav-link" href="{% url 'passenger:public_queue' %}">TRIP SCHEDULE</a>
           </li>
-
           <li class="nav-item">
             <a class="nav-link" href="#">CONTACT</a>
           </li>
-
         </ul>
       </div>
     </div>
@@ -113,22 +122,21 @@
         Thank you for your cooperation, and we wish everyone a safe and pleasant journey.
       </p>
 
-      <img src="{% static 'img/maasin-terminal.jpg' %}" alt="Maasin Terminal" class="terminal-image" />
+      <!-- ✨ Wider Announcement Image -->
+      <img src="{% static 'img/Announcement-1.png' %}" alt="Maasin Terminal" class="announcement-wide" />
     </div>
 
     <div class="subsection-title">
       <i class="bi bi-buildings-fill me-2"></i> Buildings and Jurisdictions
     </div>
 
+    <!-- ✨ Two wider images side-by-side -->
     <div class="row building-gallery mt-3">
-      <div class="col-md-4">
-        <img src="{% static 'img/building1.jpg' %}" alt="Building 1" />
+      <div class="col-md-6">
+        <img src="{% static 'img/Announcement-2.jpg' %}" alt="Building 2" />
       </div>
-      <div class="col-md-4">
-        <img src="{% static 'img/building2.jpg' %}" alt="Building 2" />
-      </div>
-      <div class="col-md-4">
-        <img src="{% static 'img/building3.jpg' %}" alt="Building 3" />
+      <div class="col-md-6">
+        <img src="{% static 'img/Announcement-3.jpg' %}" alt="Building 3" />
       </div>
     </div>
 

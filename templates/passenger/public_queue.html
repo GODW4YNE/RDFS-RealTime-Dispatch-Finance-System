@@ -19,6 +19,15 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
+    /* NAVBAR copied from announcement.html */
+    .navbar {
+      background-color: #007bff;
+    }
+    .navbar-brand, .nav-link {
+      color: white !important;
+      font-weight: 500;
+    }
+
     .route-pill {
       background: #e7f1ff;
       color: #0d6efd;
@@ -94,6 +103,32 @@
 </head>
 
 <body>
+
+<!-- 🚀 ADDED NAVBAR HERE -->
+<nav class="navbar navbar-expand-lg mb-3">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'passenger:home' %}">
+      <img src="{% static 'img/TicketNow-Logo.png' %}" alt="TicketNow Logo"
+           width="80" height="80" class="me-2">
+      TICKETNOW
+    </a>
+
+    <button class="navbar-toggler text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="{% url 'passenger:home' %}">HOME</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'passenger:announcement' %}">ANNOUNCEMENT</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'passenger:public_queue' %}">TRIP SCHEDULE</a></li>
+        <li class="nav-item"><a class="nav-link" href="#">CONTACT</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<!-- END NAVBAR -->
+
 
 <div class="container py-4">
 
@@ -207,13 +242,11 @@
 <!-- JS Countdown + Progress -->
 <script>
 (function () {
-  // Server-supplied reference now (ISO-like string)
   const serverNowISO = "{{ server_now|date:'Y-m-d H:i:s' }}";
   const serverNow = new Date(serverNowISO.replace(' ', 'T'));
   const clientNow = new Date();
   const timeOffset = serverNow.getTime() - clientNow.getTime();
 
-  // fixed countdown window before departure (15 minutes)
   const COUNTDOWN_MIN = 15;
   const COUNTDOWN_MS = COUNTDOWN_MIN * 60 * 1000;
 
@@ -222,33 +255,27 @@
   }
 
   function updateAll() {
-    // Countdown text logic
     document.querySelectorAll('.countdown').forEach(span => {
       const row = span.closest("tr");
 
-      // If closed/departed → show dash and skip
       if (row.classList.contains("departed-row")) {
         span.innerHTML = '<span class="countdown-waiting">—</span>';
         return;
       }
 
       const depart = new Date(span.dataset.departure.replace(' ', 'T')).getTime();
-      const diff = depart - nowMs(); // milliseconds until departure
+      const diff = depart - nowMs();
 
       if (diff <= 0) {
-        // departure has arrived
         span.innerHTML = '<span class="countdown-now">Departing now!</span>';
       } else if (diff > COUNTDOWN_MS) {
-        // outside countdown window: show "Waiting"
         span.innerHTML = '<span class="countdown-waiting">Waiting</span>';
       } else {
-        // inside last COUNTDOWN_MIN minutes: show countdown
         const mins = Math.ceil(diff / 60000);
         span.innerHTML = `<span class="countdown-soon">Leaves in ${mins} min</span>`;
       }
     });
 
-    // Progress bars reflect countdown window (0% before window, progress during last 15 min)
     document.querySelectorAll('.progress-bar').forEach(bar => {
       const row = bar.closest("tr");
 
@@ -262,17 +289,14 @@
       const diff = depart - nowMs();
 
       if (diff <= 0) {
-        // fully departed
         bar.style.width = "100%";
         bar.classList.remove('progress-blue', 'progress-orange');
         bar.classList.add('progress-red');
       } else if (diff > COUNTDOWN_MS) {
-        // before countdown window
         bar.style.width = "0%";
         bar.classList.remove('progress-orange', 'progress-red');
         bar.classList.add('progress-blue');
       } else {
-        // during countdown: pct is fraction of 15-min elapsed
         const pct = ((COUNTDOWN_MS - diff) / COUNTDOWN_MS) * 100;
         bar.style.width = pct + "%";
 
@@ -295,6 +319,8 @@
   setInterval(() => location.reload(), 15000);
 })();
 </script>
+
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
 
 </body>
 </html>
