@@ -4,7 +4,9 @@
 {% block title %}Register Driver | TicketNow{% endblock %}
 
 {% block content %}
+
 <style>
+
   body {
     background-color: #f8f9fa;
   }
@@ -26,6 +28,7 @@
     font-weight: 700;
     margin-bottom: 1rem;
     font-size: 1.25rem;
+    color: #006a36;
   }
 
   .required::after {
@@ -34,13 +37,139 @@
     font-weight: bold;
   }
 
-  #cameraArea {
-    pointer-events: auto;
+  .form-label {
+    font-weight: 600;
+    color: #4a5568;
   }
 
-  #cameraArea.hidden,
-  #cameraArea[style*="display:none"] {
-    pointer-events: none;
+  /* ✨ Modern Inputs */
+  input, select {
+    height: 50px !important;
+    border-radius: 10px !important;
+    border: 1.5px solid #cfd8e2 !important;
+    padding: 12px 14px !important;
+    transition: .2s;
+  }
+
+  input:focus, select:focus {
+    border-color: #006a36 !important;
+    box-shadow: 0 0 0 3px rgba(0,106,54,0.15) !important;
+  }
+
+  /* ----------- CUSTOM DATE PICKER ----------- */
+
+  .date-wrapper {
+    position: relative;
+  }
+
+  .date-wrapper input {
+    background-image: url("https://cdn-icons-png.flaticon.com/512/747/747310.png");
+    background-repeat: no-repeat;
+    background-size: 21px;
+    background-position: right 12px center;
+    cursor: pointer;
+  }
+
+  .custom-calendar {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: 330px; /* Increased so dates fit properly */
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    border: 1px solid #d7e2d6;
+    padding: 12px;
+    z-index: 9999;
+    display: none;
+    animation: fadeIn .15s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {opacity:0; transform: translateY(-6px);}
+    to {opacity:1; transform: translateY(0);}
+  }
+
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    background: #006a36;
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .cal-header select {
+    border: none;
+    background: white;
+    padding: 5px 8px;
+    border-radius: 6px;
+    color: #006a36;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  /* Weekday labels */
+  .cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    column-gap: 4px;
+    margin-top: 10px;
+    font-weight: 600;
+    text-align: center;
+    color: #006a36;
+  }
+
+  /* Dates grid */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    column-gap: 4px;
+    row-gap: 4px;
+    margin-top: 5px;
+  }
+
+  /* Uniform day squares */
+  .cal-day {
+    height: 40px;                /* Perfect square height */
+    line-height: 40px;           /* Center text vertically */
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 14px;
+    box-sizing: border-box;      /* Prevents overflow */
+    margin: 0;                   /* Removed margin for clean grid */
+  }
+
+  .cal-day:hover {
+    background: #e7f6ee;
+    color: #006a36;
+  }
+
+  .cal-day.selected {
+    background: #006a36;
+    color: white !important;
+    font-weight: bold;
+  }
+
+  .cal-day.today {
+    border: 2px solid #006a36;
+    border-radius: 6px;
+  }
+
+
+  .cal-day:hover {
+    background: #e7f6ee;
+    color: #006a36;
+  }
+
+  .cal-day.selected {
+    background: #006a36;
+    color: white !important;
+    font-weight: bold;
+  }
+
+  .cal-day.today {
+    border: 2px solid #006a36;
   }
 
 </style>
@@ -48,7 +177,7 @@
 <div class="container py-4 form-container">
 
   <h3 class="fw-bold mb-3"><i class="bi bi-person-plus-fill me-2"></i> Register Driver</h3>
-  <p class="text-muted">Register a new driver with complete license and emergency details.</p>
+  <p class="text-muted">Register a new driver with updated UI.</p>
 
   {% if messages %}
     {% for message in messages %}
@@ -70,11 +199,13 @@
         id="driverForm">
     {% csrf_token %}
 
+
     <!-- PERSONAL INFORMATION -->
     <div class="section-box">
       <div class="section-title">Personal Information</div>
 
       <div class="row g-3">
+
         <div class="col-md-3">
           <label class="form-label required">First Name</label>
           {{ form.first_name }}
@@ -94,16 +225,21 @@
           <label class="form-label">Suffix</label>
           {{ form.suffix }}
         </div>
+
       </div>
 
       <div class="row g-3 mt-1">
+
         <div class="col-md-4">
           <label class="form-label required">Birth Date</label>
-          {{ form.birth_date }}
+          <div class="date-wrapper">
+            {{ form.birth_date }}
+            <div class="custom-calendar" id="calendar_birth"></div>
+          </div>
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Birth Place</label>
+          <label class="form-label required">Birth Place</label>
           {{ form.birth_place }}
         </div>
 
@@ -111,8 +247,10 @@
           <label class="form-label required">Blood Type</label>
           {{ form.blood_type }}
         </div>
+
       </div>
     </div>
+
 
     <!-- CONTACT INFORMATION -->
     <div class="section-box">
@@ -122,7 +260,6 @@
         <div class="col-md-6">
           <label class="form-label required">Mobile Number</label>
           {{ form.mobile_number }}
-          <small class="text-muted">Format: +63 or 09...</small>
         </div>
 
         <div class="col-md-6">
@@ -132,11 +269,13 @@
       </div>
     </div>
 
+
     <!-- ADDRESS INFORMATION -->
     <div class="section-box">
       <div class="section-title">Address Information</div>
 
       <div class="row g-3">
+
         <div class="col-md-4">
           <label class="form-label required">Street</label>
           {{ form.street }}
@@ -151,9 +290,11 @@
           <label class="form-label required">ZIP Code</label>
           {{ form.zip_code }}
         </div>
+
       </div>
 
       <div class="row g-3 mt-1">
+
         <div class="col-md-6">
           <label class="form-label required">City / Municipality</label>
           {{ form.city_municipality }}
@@ -163,14 +304,17 @@
           <label class="form-label required">Province</label>
           {{ form.province }}
         </div>
+
       </div>
     </div>
+
 
     <!-- LICENSE INFORMATION -->
     <div class="section-box">
       <div class="section-title">Driver's License Information</div>
 
       <div class="row g-3">
+
         <div class="col-md-4">
           <label class="form-label required">License Number</label>
           {{ form.license_number }}
@@ -178,21 +322,27 @@
 
         <div class="col-md-4">
           <label class="form-label required">License Expiry</label>
-          {{ form.license_expiry }}
+          <div class="date-wrapper">
+            {{ form.license_expiry }}
+            <div class="custom-calendar" id="calendar_expiry"></div>
+          </div>
         </div>
 
         <div class="col-md-4">
           <label class="form-label required">License Type</label>
           {{ form.license_type }}
         </div>
+
       </div>
     </div>
+
 
     <!-- EMERGENCY CONTACT -->
     <div class="section-box">
       <div class="section-title">Emergency Contact</div>
 
       <div class="row g-3">
+
         <div class="col-md-4">
           <label class="form-label required">Contact Name</label>
           {{ form.emergency_contact_name }}
@@ -204,119 +354,141 @@
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Relationship</label>
+          <label class="form-label required">Relationship</label>
           {{ form.emergency_contact_relationship }}
         </div>
+
       </div>
     </div>
 
-    <div class="d-flex">
-        <a href="{% url 'accounts:staff_dashboard' %}" 
-          class="btn btn-outline-secondary me-auto"
-          role="button"
-          type="button">
-          <i class="bi bi-arrow-left-circle-fill me-1"></i> Back to Dashboard
-        </a>
 
-        <button type="submit" class="btn btn-success px-4 ms-auto">
-            <i class="bi bi-check-circle-fill me-1"></i> Register Driver
-        </button>
+    <!-- FOOTER BUTTONS -->
+    <div class="d-flex">
+      <a href="{% url 'accounts:staff_dashboard' %}" class="btn btn-outline-secondary me-auto">
+        <i class="bi bi-arrow-left-circle-fill me-1"></i> Back to Dashboard
+      </a>
+
+      <button type="submit" class="btn btn-success px-4 ms-auto">
+        <i class="bi bi-check-circle-fill me-1"></i> Register Driver
+      </button>
     </div>
-    </div>
+
   </form>
 
-  <!-- OCR SECTION -->
-  <hr class="my-4">
 
-  <h6 class="mb-2"><i class="bi bi-camera-fill me-2"></i> Driver’s License OCR Scanner</h6>
-  <p class="text-muted small">Capture a clear photo of the license to auto-fill the fields.</p>
-
-  <div class="mb-3">
-    <button id="openCameraBtn" class="btn btn-outline-success me-2">Open Camera</button>
-    <button id="captureBtn" class="btn btn-primary me-2" disabled>Capture</button>
-    <button id="closeCameraBtn" class="btn btn-danger" disabled>Close Camera</button>
-  </div>
-
-  <div id="cameraArea" class="mb-3" style="display:none;">
-    <video id="cameraFeed" width="420" autoplay playsinline class="border rounded"></video>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <img id="capturedImage" class="mt-3 border rounded" width="420" style="display:none;">
-  </div>
-</div>
-
+<!-- 📌 CUSTOM DATE PICKER JAVASCRIPT -->
 <script>
-const openCameraBtn = document.getElementById('openCameraBtn');
-const closeCameraBtn = document.getElementById('closeCameraBtn');
-const captureBtn = document.getElementById('captureBtn');
-const video = document.getElementById('cameraFeed');
-const canvas = document.getElementById('canvas');
-const capturedImage = document.getElementById('capturedImage');
-const cameraArea = document.getElementById('cameraArea');
-let stream;
+function createCustomCalendar(inputFieldId, calendarBoxId, minYear, maxYear) {
+    const input = document.getElementById(inputFieldId);
+    const box = document.getElementById(calendarBoxId);
 
-function getCSRF() {
-  const el = document.querySelector('#driverForm [name=csrfmiddlewaretoken]');
-  return el ? el.value : '';
-}
+    input.type = "text"; // prevent native date UI
 
-openCameraBtn.addEventListener('click', async () => {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    cameraArea.style.display = 'block';
-    captureBtn.disabled = false;
-    closeCameraBtn.disabled = false;
-    openCameraBtn.disabled = true;
-  } catch {
-    alert('Camera access denied.');
-  }
-});
+    const today = new Date();
+    let selected = null;
+    let month = today.getMonth();
+    let year = today.getFullYear();
 
-closeCameraBtn.addEventListener('click', () => {
-  if (stream) stream.getTracks().forEach(track => track.stop());
-  video.srcObject = null;
-  cameraArea.style.display = 'none';
-  captureBtn.disabled = true;
-  closeCameraBtn.disabled = true;
-  openCameraBtn.disabled = false;
-});
+    function render() {
+        box.innerHTML = "";
 
-captureBtn.addEventListener('click', async () => {
-  const ctx = canvas.getContext('2d');
-  canvas.width = video.videoWidth || 800;
-  canvas.height = video.videoHeight || 600;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imageData = canvas.toDataURL('image/png');
+        let header = document.createElement("div");
+        header.className = "cal-header";
 
-  capturedImage.src = imageData;
-  capturedImage.style.display = 'block';
+        let monthSelect = document.createElement("select");
+        let months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-  try {
-    const res = await fetch("{% url 'vehicles:ocr_process' %}", {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRF()
-      },
-      body: JSON.stringify({ image_data: imageData })
+        months.forEach((m,i)=>{
+            let opt = document.createElement("option");
+            opt.value = i;
+            opt.textContent = m;
+            if (i===month) opt.selected = true;
+            monthSelect.appendChild(opt);
+        });
+
+        let yearSelect = document.createElement("select");
+        for (let y=minYear; y<=maxYear; y++){
+            let opt = document.createElement("option");
+            opt.value = y;
+            opt.textContent = y;
+            if (y===year) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+
+        monthSelect.onchange = ()=>{ month=parseInt(monthSelect.value); render(); };
+        yearSelect.onchange = ()=>{ year=parseInt(yearSelect.value); render(); };
+
+        header.appendChild(monthSelect);
+        header.appendChild(yearSelect);
+        box.appendChild(header);
+
+        /* Week Days */
+        let daysRow = document.createElement("div");
+        daysRow.className = "cal-days";
+        ["Su","Mo","Tu","We","Th","Fr","Sa"].forEach(d=>{
+            let el=document.createElement("div");
+            el.textContent=d;
+            daysRow.appendChild(el);
+        });
+        box.appendChild(daysRow);
+
+        /* Days Grid */
+        let grid = document.createElement("div");
+        grid.className = "cal-grid";
+        box.appendChild(grid);
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month+1, 0).getDate();
+
+        for (let i=0;i<firstDay;i++){
+            grid.appendChild(document.createElement("div"));
+        }
+
+        for (let d=1; d<=totalDays; d++){
+            let dayBtn = document.createElement("div");
+            dayBtn.className = "cal-day";
+            dayBtn.textContent = d;
+
+            let todayObj = new Date();
+            if (year === todayObj.getFullYear() && month === todayObj.getMonth() && d === todayObj.getDate()) {
+                dayBtn.classList.add("today");
+            }
+
+            if (selected &&
+                selected.year===year &&
+                selected.month===month &&
+                selected.day===d) {
+                dayBtn.classList.add("selected");
+            }
+
+            dayBtn.onclick = () => {
+                selected = {year, month, day:d};
+                input.value = `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+                box.style.display = "none";
+            };
+
+            grid.appendChild(dayBtn);
+        }
+    }
+
+    input.addEventListener("click", () => {
+        box.style.display = "block";
+        render();
     });
 
-    const data = await res.json();
+    document.addEventListener("click", (e)=>{
+        if (!box.contains(e.target) && e.target !== input) {
+            box.style.display = "none";
+        }
+    });
+}
 
-    if (data.error) {
-      alert('OCR Error: ' + data.error);
-    } else {
-      for (const [key, value] of Object.entries(data)) {
-        if (!value) continue;
-        const input = document.getElementById('id_' + key);
-        if (input) input.value = value;
-      }
-      alert('License scanned successfully.');
-    }
-  } catch (err) {
-    alert('OCR request failed: ' + err);
-  }
-});
+
+// Initialize both date pickers
+createCustomCalendar("id_birth_date", "calendar_birth", 1950, new Date().getFullYear());
+createCustomCalendar("id_license_expiry", "calendar_expiry", 2024, 2045);
+
+
 </script>
 
 {% endblock %}

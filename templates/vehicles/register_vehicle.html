@@ -4,114 +4,480 @@
 {% block title %}Register Vehicle | TicketNow{% endblock %}
 
 {% block content %}
-  <div class="container py-4">
-    <div class="mx-auto p-4 bg-white shadow rounded" style="max-width: 1200px;">
-    <h3 class="fw-bold mb-2"><i class="bi bi-truck-front-fill me-2"></i> Register Vehicle</h3>
-    <p class="text-muted mb-4">
-      Fill in all required fields (<span class="text-danger">*</span>) to register a vehicle and link it to a driver.
-    </p>
 
-    <!-- Flash Messages -->
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
-    {% endif %}
+<style>
+  body {
+    background-color: #f3f6fb !important;
+  }
 
-    {% if form.non_field_errors %}
-    <div class="alert alert-danger"><strong>Form Error:</strong> {{ form.non_field_errors }}</div>
-    {% endif %}
+  .form-container {
+    max-width: 1200px;
+    margin: auto;
+  }
 
-    <form method="POST" enctype="multipart/form-data"
-          hx-post="{% url 'vehicles:register_vehicle' %}"
-          hx-target="#main-content"
-          hx-swap="innerHTML transition:true"
-          id="vehicleForm">
-      {% csrf_token %}
+  .section-box {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 2rem 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid #e6ebf2;
+    box-shadow: 0px 8px 25px rgba(0,0,0,0.06);
+    transition: 0.2s ease;
+  }
 
-      <!-- Assign Driver -->
-      <div class="mb-3">
-        <label class="form-label fw-bold required">Assign Driver</label>
-        {% if form.assigned_driver.errors %}
-          <div class="form-control border-danger p-0">{{ form.assigned_driver }}</div>
-          <div class="text-danger small mt-1">{{ form.assigned_driver.errors|striptags }}</div>
-        {% else %}
-          {{ form.assigned_driver }}
-        {% endif %}
-        <div class="form-text text-muted">Search and select a registered driver.</div>
+  .section-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0px 10px 30px rgba(0,0,0,0.08);
+  }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1.4rem;
+    color: #006a36;
+  }
+
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+
+  .form-group label {
+    font-size: 0.90rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+    color: #4a5568;
+  }
+
+  .required::after {
+    content: " *";
+    color: red;
+    font-weight: bold;
+  }
+
+  /* Normal Inputs */
+  .form-group input,
+  .form-group select {
+    height: 50px !important;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1.5px solid #cfd8e2;
+    background: white;
+    transition: 0.15s;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    border-color: #006a36;
+    box-shadow: 0 0 0 3px rgba(0,106,54,0.15);
+  }
+
+  /* DATE FIELD WRAPPER (fixes calendar position) */
+  .date-wrapper {
+    position: relative !important;
+    max-width: 260px;
+  }
+
+  /* Calendar Icon */
+  .date-wrapper input {
+    background-image: url("https://cdn-icons-png.flaticon.com/512/747/747310.png");
+    background-repeat: no-repeat;
+    background-size: 21px;
+    background-position: right 12px center;
+    width: 300px !important;
+    max-width: 300px !important;
+    cursor: pointer;
+  }
+
+  /* Year Dropdown */
+  .year-select {
+    appearance: none;
+    background-image: url("https://cdn-icons-png.flaticon.com/512/32/32195.png");
+    background-repeat: no-repeat;
+    background-size: 18px;
+    background-position: right 14px center;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .year-select option {
+    padding: 6px;
+  }
+
+  /* Custom Calendar */
+  .custom-calendar {
+    position: absolute;
+    top: 54px;
+    left: 0;
+    width: 300px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    border: 1px solid #d7e2d6;
+    padding: 12px;
+    z-index: 9999;
+    display: none;
+    animation: fadeIn .15s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {opacity:0; transform: translateY(-6px);}
+    to   {opacity:1; transform: translateY(0);}
+  }
+
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    background: #006a36;
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .cal-header select {
+    border: none;
+    background: white;
+    padding: 5px 8px;
+    border-radius: 6px;
+    color: #006a36;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-top: 10px;
+    text-align: center;
+    font-weight: 700;
+    color: #006a36;
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-top: 5px;
+  }
+
+  .cal-day {
+    padding: 10px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .cal-day:hover {
+    background: #e7f6ee;
+  }
+
+  .cal-day.selected {
+    background: #006a36;
+    color: white;
+    font-weight: bold;
+  }
+
+  .cal-day.today {
+    border: 2px solid #006a36;
+  }
+
+
+</style>
+
+
+<div class="container py-4 form-container">
+
+  <h3 class="fw-bold mb-3"><i class="bi bi-truck-front-fill me-2"></i> Register Vehicle</h3>
+  <p class="text-muted mb-4">Fill in all required fields.</p>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
+    {% endfor %}
+  {% endif %}
 
-      <!-- Vehicle Fields -->
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger"><strong>Error:</strong> {{ form.non_field_errors }}</div>
+  {% endif %}
+
+
+  <form method="POST" enctype="multipart/form-data"
+        hx-post="{% url 'vehicles:register_vehicle' %}"
+        hx-target="#main-content"
+        hx-swap="innerHTML transition:true"
+        id="vehicleForm">
+
+    {% csrf_token %}
+
+        <!-- VEHICLE DETAILS -->
+    <div class="section-box">
+      <div class="section-title">Vehicle Details</div>
+
       <div class="row g-3">
-        {% for field in form %}
-          {% if field.name != 'assigned_driver' %}
-          <div class="col-md-6">
-            <label class="form-label fw-bold">
-              {{ field.label }}
-              {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-            </label>
 
-            {% if field.errors %}
-              <div class="form-control border-danger p-0">{{ field }}</div>
-              <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
-            {% else %}
-              {{ field }}
-            {% endif %}
-          </div>
-          {% endif %}
-        {% endfor %}
+        <div class="col-md-6 form-group">
+          <label class="required">Vehicle Name</label>
+          {{ form.vehicle_name }}
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">Vehicle Type</label>
+          {{ form.vehicle_type }}
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">Ownership Type</label>
+          {{ form.ownership_type }}
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">Route</label>
+          {{ form.route }}
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">Seat Capacity</label>
+          {{ form.seat_capacity }}
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- REGISTRATION DETAILS -->
+    <div class="section-box">
+      <div class="section-title">Registration Details</div>
+
+      <div class="row g-3">
+
+        <div class="col-md-6 form-group">
+          <label class="required">Registration Number</label>
+          {{ form.registration_number }}
+        </div>
+
+        <div class="col-md-4 form-group date-wrapper">
+          <label class="required">Registration Expiry</label>
+          {{ form.registration_expiry }}
+          <div id="calendar_regexpiry" class="custom-calendar"></div>
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">Year Model</label>
+
+          <!-- Replaced NumberInput with safe frontend-only dropdown -->
+          <select id="id_year_model" name="year_model" class="form-select year-select"></select>
+
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">License Plate</label>
+          {{ form.license_plate }}
+        </div>
+
+      </div>
+    </div>
+
+        <!-- VEHICLE IDENTIFICATION -->
+    <div class="section-box">
+      <div class="section-title">Vehicle Identification</div>
+
+      <div class="row g-3">
+
+        <div class="col-md-6 form-group">
+          <label class="required">CR Number</label>
+          {{ form.cr_number }}
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">OR Number</label>
+          {{ form.or_number }}
+        </div>
+
+        <div class="col-md-6 form-group">
+          <label class="required">VIN Number</label>
+          {{ form.vin_number }}
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- DRIVER ASSIGNMENT -->
+    <div class="section-box">
+      <div class="section-title">Driver Assignment</div>
+
+      <div class="form-group">
+        <label class="required">Assigned Driver</label>
+        {{ form.assigned_driver }}
       </div>
 
-      <!-- Buttons -->
-      <div class="d-flex justify-content-between mt-4">
-        <a href="{% url 'accounts:staff_dashboard' %}"
-           hx-get="{% url 'accounts:staff_dashboard' %}"
-           hx-target="#main-content"
-           hx-swap="innerHTML transition:true"
-           class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-left-circle-fill me-1"></i> Back to Dashboard
-        </a>
+    </div>
 
-        <button type="submit" class="btn btn-success px-4">
-          <i class="bi bi-check-circle-fill me-1"></i> Register Vehicle
-        </button>
-      </div>
-    </form>
-  </div>
+
+    <!-- FOOTER BUTTONS -->
+    <div class="d-flex justify-content-between mt-4">
+
+      <a href="{% url 'accounts:staff_dashboard' %}"
+         class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left-circle-fill me-1"></i> Back to Dashboard
+      </a>
+
+      <button type="submit" class="btn btn-success px-4">
+        <i class="bi bi-check-circle-fill me-1"></i> Register Vehicle
+      </button>
+
+    </div>
+
+  </form>
 </div>
 
-<!-- Select2 Support -->
+<!-- Select2 -->
 <link href="{% static 'css/select2.min.css' %}" rel="stylesheet">
 <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
-<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'js/select2.min.js' %}"></script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  if (window.$ && $.fn && $.fn.select2) {
-    $('#id_assigned_driver, #id_route').select2({
-      placeholder: "Select option...",
-      allowClear: true,
-      width: '100%'
-    });
-  }
-
-  const invalid = document.querySelector('.border-danger input, .border-danger select');
-  if (invalid) invalid.focus();
+$(document).ready(function() {
+  $('#id_assigned_driver').select2({ width: '100%' });
+  $('#id_route').select2({ width: '100%' });
 });
 </script>
 
-<style>
-.required::after {
-  content: " *";
-  color: red;
+
+<!-- YEAR MODEL DROPDOWN -->
+<script>
+const yearSelect = document.getElementById("id_year_model");
+const currentYear = new Date().getFullYear();
+
+for (let y = 2000; y <= currentYear; y++) {
+  let opt = document.createElement("option");
+  opt.value = y;
+  opt.textContent = y;
+  yearSelect.appendChild(opt);
 }
-select.form-control, select.form-select {
-  width: 100% !important;
+
+// Make dropdown height short
+yearSelect.style.maxHeight = "38px";
+yearSelect.style.padding = "6px 10px";
+</script>
+
+
+<!-- CUSTOM CALENDAR -->
+<script>
+function createCalendar(inputId, calendarId, minYear, maxYear) {
+
+  const input = document.getElementById(inputId);
+  const wrapper = document.getElementById(inputId).parentElement;
+  const box = wrapper.querySelector(".custom-calendar");
+
+
+  input.type = "text"; // force text for styling
+
+  let today = new Date();
+  let month = today.getMonth();
+  let year = today.getFullYear();
+
+  function render() {
+    box.innerHTML = "";
+
+    // HEADER
+    let header = document.createElement("div");
+    header.className = "cal-header";
+
+    // MONTH SELECT
+    let monthSel = document.createElement("select");
+    const monthNames = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+
+    monthNames.forEach((m, i) => {
+      let opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = m;
+      if (i === month) opt.selected = true;
+      monthSel.appendChild(opt);
+    });
+
+    // YEAR SELECT
+    let yearSel = document.createElement("select");
+    yearSel.className = "year-select";
+
+    for (let y = minYear; y <= maxYear; y++) {
+      let opt = document.createElement("option");
+      opt.value = y;
+      opt.textContent = y;
+      if (y === year) opt.selected = true;
+      yearSel.appendChild(opt);
+    }
+
+    monthSel.onchange = () => { month = parseInt(monthSel.value); render(); };
+    yearSel.onchange = () => { year = parseInt(yearSel.value); render(); };
+
+    header.appendChild(monthSel);
+    header.appendChild(yearSel);
+    box.appendChild(header);
+
+    // WEEKDAYS
+    let daysRow = document.createElement("div");
+    daysRow.className = "cal-days";
+    ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].forEach(d => {
+      let el = document.createElement("div");
+      el.textContent = d;
+      daysRow.appendChild(el);
+    });
+    box.appendChild(daysRow);
+
+    // DAYS GRID
+    let grid = document.createElement("div");
+    grid.className = "cal-grid";
+    box.appendChild(grid);
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      grid.appendChild(document.createElement("div"));
+    }
+
+    for (let d = 1; d <= totalDays; d++) {
+      let day = document.createElement("div");
+      day.className = "cal-day";
+      day.textContent = d;
+
+      let today = new Date();
+      if (year === today.getFullYear() &&
+          month === today.getMonth() &&
+          d === today.getDate()) {
+        day.classList.add("today");
+      }
+
+      day.onclick = () => {
+        input.value = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        box.style.display = "none";
+      };
+
+      grid.appendChild(day);
+    }
+  }
+
+  // OPEN CALENDAR BELOW INPUT
+  input.addEventListener("click", () => {
+    box.style.display = "block";
+    render();
+  });
+
+  // CLOSE CALENDAR WHEN CLICKING OUTSIDE
+  document.addEventListener("click", (e) => {
+    if (!wrapper.contains(e.target)) {
+      box.style.display = "none";
+    }
+  });
 }
-</style>
+
+createCalendar("id_registration_expiry", "calendar_regexpiry", 2000, 2045);
+</script>
 
 {% endblock %}
