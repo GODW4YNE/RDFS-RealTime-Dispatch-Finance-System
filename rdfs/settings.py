@@ -11,6 +11,10 @@ env = environ.Env(
 )
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # Load .env for local dev
 
+ENVIRONMENT = env('ENVIRONMENT', default='development')
+IS_PRODUCTION = ENVIRONMENT == 'production'
+
+
 # --- Security ---
 SECRET_KEY = env('SECRET_KEY', default='replace-this-with-your-own-secret-key')
 DEBUG = env.bool('DEBUG', default=True)
@@ -18,7 +22,7 @@ DEBUG = env.bool('DEBUG', default=True)
 # --- Allowed Hosts (Render-safe) ---
 # Always include your Render domain and local dev hosts to prevent DisallowedHost errors.
 ALLOWED_HOSTS = [
-    'ticketnow-wkrf.onrender.com',  # your Render public URL
+    '*',
     '127.0.0.1',
     'localhost',
 ]
@@ -64,7 +68,7 @@ MIDDLEWARE = [
 
 
 # --- Root URLs ---
-ROOT_URLCONF = 'TicketNow.urls'
+ROOT_URLCONF = 'rdfs.urls'
 
 # --- Templates ---
 TEMPLATES = [
@@ -84,7 +88,7 @@ TEMPLATES = [
 ]
 
 # --- WSGI ---
-WSGI_APPLICATION = 'TicketNow.wsgi.application'
+WSGI_APPLICATION = 'rdfs.wsgi.application'
 
 # --- Database ---
 # Works both locally (.env) and on Render (DATABASE_URL)
@@ -94,15 +98,16 @@ if env('DATABASE_URL', default=None):
     }
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': env('DB_NAME', default='ticketnow_db'),
-            'USER': env('DB_USER', default='ticketnow_user'),
-            'PASSWORD': env('DB_PASSWORD', default='ticketnow123'),
-            'HOST': env('DB_HOST', default='localhost'),
-            'PORT': env('DB_PORT', default='5432'),
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST', default='localhost'),
+        'PORT': env('DB_PORT', default='5432'),
     }
+}
+
 
 # --- Password Validation ---
 AUTH_PASSWORD_VALIDATORS = []
@@ -143,3 +148,20 @@ SESSION_SAVE_EVERY_REQUEST = True
 # --- Security (toggle True when using HTTPS on Render) ---
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
+
+
+# ============================
+# SECURITY SETTINGS (PRODUCTION ONLY)
+# ============================
+
+if IS_PRODUCTION:
+    DEBUG = False
+
+    SECURE_SSL_REDIRECT = True
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
