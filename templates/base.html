@@ -1,5 +1,4 @@
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,73 +14,47 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    :root {
-      --sidebar-bg: #0d6efd;
-      --sidebar-hover: #0b5ed7;
-      --sidebar-active: #0a58ca;
-      --text-light: #f8f9fa;
-    }
-
+    /* ===============================
+       BASE LAYOUT ONLY (NO SIDEBAR UI)
+    ================================ */
     html, body {
       height: 100%;
       margin: 0;
+      padding: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: #f8f9fa;
     }
 
-    /* Layout container: sidebar + main */
-    .app-shell { display: flex; min-height: 100vh; }
-
-    .logo-img {
-      width: 80px;   /* bigger size */
-      height: auto;  /* keep aspect ratio */
-      display: inline-block;
-      vertical-align: middle; /* aligns with text */
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
     }
 
-    .sidebar {
-      width: 250px;
-      min-width: 250px;
-      background: var(--sidebar-bg);
-      color: var(--text-light);
-      padding: 20px 0;
-      box-shadow: 2px 0 8px rgba(0, 0, 0, .08);
-      position: relative;
+    .app-sidebar {
+      flex: 0 0 260px;
+      min-height: 100vh;
     }
-
-    .sidebar h4 { text-align: center; margin: 0 0 1rem; font-weight: 600; }
-    .sidebar ul { padding-left: 0; list-style: none; margin: 0; }
-    .sidebar a { display: block; padding: 10px 22px; color: var(--text-light); text-decoration: none; }
-    .sidebar a:hover { background: var(--sidebar-hover); padding-left: 26px; transition: all .15s; }
-    .sidebar a.active { background: var(--sidebar-active); border-left: 4px solid #fff; padding-left: 24px; font-weight: 600; }
 
     #main-content {
       flex: 1;
-      padding: 28px;
       min-width: 0;
+      padding: 28px;
+      background: #f8f9fa;
     }
 
     @media (max-width: 768px) {
-      .sidebar { position: relative; width: 100%; min-width: 100%; }
-      #main-content { padding: 16px; }
-      .app-shell { flex-direction: column; }
-    }
+      .app-shell {
+        flex-direction: column;
+      }
 
-    /* Loader & toast (optional visuals) */
-    #globalLoader {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(255, 255, 255, .7);
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-    }
+      .app-sidebar {
+        width: 100%;
+        min-height: auto;
+      }
 
-    #globalLoader .spinner-border {
-      width: 3rem;
-      height: 3rem;
-      color: #0d6efd;
+      #main-content {
+        padding: 16px;
+      }
     }
 
     .toast-container {
@@ -93,61 +66,61 @@
   </style>
 </head>
 
-<body>
-  <div class="app-shell">
-    {% if request.user.is_authenticated %}
-      <aside class="sidebar">
-        {% if user.role == 'admin' %}
-          {% include 'includes/sidebar_admin.html' %}
+<body class="{% block body_class %}{% endblock %}">
+
+{% block layout %}
+<div class="app-shell">
+
+  {% if request.user.is_authenticated %}
+    <aside class="app-sidebar">
+      {% if user.role == 'admin' %}
+        {% include 'includes/sidebar_admin.html' %}
+      {% else %}
+        {% include 'includes/sidebar_staff.html' %}
+      {% endif %}
+    </aside>
+  {% endif %}
+
+  <main id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+{% endblock %}
+
+<!-- Toasts -->
+<div class="toast-container"></div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const container = document.querySelector('.toast-container');
+    if (!container) return;
+
+    {% for message in messages %}
+      (function () {
+        {% if message.tags == 'error' %}
+          var toastClass = 'danger';
         {% else %}
-          {% include 'includes/sidebar_staff.html' %}
+          var toastClass = '{{ message.tags }}';
         {% endif %}
-      </aside>
-    {% endif %}
 
-    <!-- Main content -->
-    <main id="main-content">
-      {% block content %}{% endblock %}
-    </main>
-  </div>
+        const toast = document.createElement('div');
+        toast.className = "toast align-items-center text-bg-" + toastClass + " border-0";
+        toast.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body fw-semibold">{{ message|escapejs }}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          </div>`;
+        container.appendChild(toast);
+        new bootstrap.Toast(toast, { delay: 3500 }).show();
+      })();
+    {% endfor %}
+  });
+</script>
 
-  <!-- Loader (kept if needed for manual loading states) -->
-  <div id="globalLoader">
-    <div class="spinner-border" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-  </div>
-
-  <!-- Toast messages container -->
-  <div class="toast-container position-fixed top-0 end-0 p-3"></div>
-
-  <!-- Scripts -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
-
-  <script>
-    // Django messages -> toast
-    document.addEventListener('DOMContentLoaded', function() {
-      const container = document.querySelector('.toast-container');
-      {% for message in messages %}
-        (function() {
-          {% if message.tags == 'error' %}
-            var toastClass = 'danger';
-          {% else %}
-            var toastClass = '{{ message.tags }}';
-          {% endif %}
-          const t = document.createElement('div');
-          t.className = "toast align-items-center text-bg-" + toastClass + " border-0";
-          t.innerHTML = `
-            <div class="d-flex">
-              <div class="toast-body fw-semibold">{{ message|escapejs }}</div>
-              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>`;
-          container.appendChild(t);
-          new bootstrap.Toast(t, { delay: 3500 }).show();
-        })();
-      {% endfor %}
-    });
-  </script>
 </body>
 </html>
