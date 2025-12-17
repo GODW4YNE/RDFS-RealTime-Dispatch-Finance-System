@@ -92,21 +92,14 @@ WSGI_APPLICATION = 'rdfs.wsgi.application'
 
 # --- Database ---
 # Works both locally (.env) and on Render (DATABASE_URL)
-if env('DATABASE_URL', default=None):
-    DATABASES = {
-        'default': env.db(),  # automatically parses DATABASE_URL
-    }
-else:
-    DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST', default='localhost'),
-        'PORT': env('DB_PORT', default='5432'),
-    }
+# DATABASE CONFIGURATION
+DATABASES = {
+    "default": env.db(
+        "DATABASE_URL",
+        default="sqlite:///db.sqlite3"
+    )
 }
+
 
 
 # --- Password Validation ---
