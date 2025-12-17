@@ -45,6 +45,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    "cloudinary",
+    "cloudinary_storage",
+
     # Custom apps
     'accounts',
     'main',
@@ -52,6 +55,8 @@ INSTALLED_APPS = [
     'vehicles',
     'reports',
 ]
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 # --- Middleware ---
 MIDDLEWARE = [
