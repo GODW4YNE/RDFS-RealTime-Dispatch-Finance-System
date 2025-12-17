@@ -27,6 +27,12 @@ DEBUG = env.bool("DEBUG", default=not IS_PRODUCTION)
 
 ALLOWED_HOSTS = ["*"]
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://rdfs-realtime-dispatch-finance-system-production.up.railway.app",
+]
+
 
 # =====================================================
 # APPLICATIONS
